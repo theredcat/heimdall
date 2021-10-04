@@ -110,7 +110,8 @@ export class Infrastructure {
 
 		(this.cy as any).cxtmenu({
 			selector: 'node, edge',
-			commands: this.circularMenuOptions
+			commands: this.circularMenuOptions,
+			outsideMenuCancel: 10
 		})
 
 		this.logger = new Logger(new.target.name);
