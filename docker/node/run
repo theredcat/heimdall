@@ -1,0 +1,25 @@
+#!/bin/bash
+
+set -e
+ls -alh
+pwd -P
+whoami
+ls -alh /srv
+echo "Container is starting..." 1>&2
+
+if ! [ "$DISABLE_NPM_CI" = "true" ]
+then
+  echo "[TaskStart][Init] Npm ci" 1>&2
+  make build
+  echo "[TaskEnd][Init] Npm ci" 1>&2
+else
+  echo "[TaskSkip][Init] Npm ci" 1>&2
+fi
+
+echo "[TaskStart][Init] Make build" 1>&2
+make config
+echo "[TaskEnd][Init] Make build" 1>&2
+
+# Start app
+echo "[Service][Start] Starting server" 1>&2
+npm run dev

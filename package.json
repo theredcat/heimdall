@@ -1,0 +1,62 @@
+{
+  "name": "stackmanager",
+  "version": "0.0.1",
+  "description": "Docker-compose web manager",
+  "main": "server.js",
+  "scripts": {
+    "test": "eslint",
+    "build": "webpack",
+    "dev": "webpack serve"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+ssh://git@github.com/theredcat/stackmanager.git"
+  },
+  "keywords": [
+    "docker",
+    "docker-compose",
+    "manager",
+    "interface",
+    "cytoscape",
+    "network",
+    "volumes"
+  ],
+  "author": "Nathan Delhaye",
+  "license": "AGPL-3.0",
+  "bugs": {
+    "url": "https://github.com/theredcat/stackmanager/issues"
+  },
+  "homepage": "https://github.com/theredcat/stackmanager#readme",
+  "devDependencies": {
+    "eslint": "^7.32.0",
+    "webpack-cli": "^4.6.0",
+    "webpack-dev-server": "^3.11.2"
+  },
+  "dependencies": {
+    "@types/cytoscape": "^3.14.14",
+    "@types/node": "^16.7.10",
+    "@types/uikit": "^3.3.1",
+    "axios": "^0.21.1",
+    "css-loader": "^5.2.4",
+    "cytoscape": "^3.18.2",
+    "cytoscape-avsdf": "^1.0.0",
+    "cytoscape-cose-bilkent": "^4.1.0",
+    "cytoscape-cxtmenu": "^3.4.0",
+    "cytoscape-elk": "^2.0.2",
+    "cytoscape-spread": "^3.0.0",
+    "file-loader": "^6.2.0",
+    "html-webpack-plugin": "^5.3.1",
+    "less": "^3.13.1",
+    "less-loader": "^9.0.0",
+    "node-docker-api": "^1.1.22",
+    "shlex": "^2.1.0",
+    "style-loader": "^2.0.0",
+    "ts-loader": "^9.1.1",
+    "typescript": "^4.4.2",
+    "uikit": "^3.6.21",
+    "webpack": "^5.36.0",
+    "xterm": "^4.13.0",
+    "xterm-addon-attach": "^0.6.0",
+    "xterm-addon-fit": "^0.5.0"
+  }
+}

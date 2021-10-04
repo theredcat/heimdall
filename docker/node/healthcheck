@@ -1,0 +1,2 @@
+#!/usr/bin/env bash
+curl --fail localhost:1337
