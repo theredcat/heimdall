@@ -12,9 +12,9 @@ const updateGraph = () => {
 	console.log(counter)
 	counter++
 	if (!focused) {
-		setTimeout(updateGraph, 100)
+		setTimeout(updateGraph, 10000)
 	} else {
-		graph.update().then(() => setTimeout(updateGraph, 5000))
+		graph.update().then(() => setTimeout(updateGraph, 1000))
 	}
 }
 window.onfocus = () => {
