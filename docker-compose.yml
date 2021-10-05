@@ -2,23 +2,19 @@ version: '3.7'
 
 services:
   heimdall-proxy:
-    image: nginx
+    build:
+      dockerfile: ${HEIMDALL_PATH:-.}/docker/nginx/Dockerfile
+      context: ${HEIMDALL_PATH:-.}
+      target: dev
     ports:
       - ${HEIMDALL_NGINX_PORT:-80}:80
     volumes:
       - ${DOCKER_SOCKET_PATH:-/var/run/docker.sock}:/var/run/docker.sock
-      - ${HEIMDALL_PATH:-.}/docker/nginx/nginx.conf.tpl:/etc/nginx/nginx.conf.tpl
-    command: /bin/bash -c "envsubst < /etc/nginx/nginx.conf.tpl > /etc/nginx/nginx.conf && nginx -g 'daemon off;'"
     environment:
       APP_CONTAINER: heimdall-node
-    healthcheck:
-      test: ["CMD", "bash", "-c", "curl --fail localhost/docker/_ping"]
-      interval: 10s
-      timeout: 1s
-      retries: 3
-      start_period: 10s
 
   heimdall-node:
+    image: heimdall-node:latest
     build: ${HEIMDALL_PATH:-.}/docker/node
     volumes:
       - ${HEIMDALL_PATH:-./}:/srv/heimdall/current:cached
@@ -29,4 +25,4 @@ services:
       GID: "${USER_GID?-Please export your GID in env var USER_GID}"
       APP_MODE: dev
       APP_DOMAIN: localhost
-      DOCKER_API_URL: "http://localhost/docker"
+      DOCKER_API_URL: "http://localhost:${HEIMDALL_NGINX_PORT:-80}/docker"

@@ -10,8 +10,14 @@ else
 endif
 
 build: install
+	npm run build
+
 config:
 	envsubst < ./config.json.tpl > ./config.json
 
 pre-symlink:
 post-symlink:
+
+release:
+	docker-compose -f docker-compose.yml -f docker-compose.release.yml build heimdall-proxy
+	docker-compose -f docker-compose.yml -f docker-compose.release.yml push heimdall-proxy

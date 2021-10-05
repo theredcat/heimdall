@@ -5,7 +5,7 @@
   "main": "server.js",
   "scripts": {
     "test": "eslint",
-    "build": "webpack",
+    "build": "webpack build",
     "dev": "webpack serve"
   },
   "repository": {
