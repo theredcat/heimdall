@@ -2,7 +2,7 @@ version: '3.7'
 
 services:
   heimdall-proxy:
-    image: thefatredcat/heimdall:1.0.0
+    image: thefatredcat/heimdall:1.0.1
     volumes: []
     build:
       target: release
