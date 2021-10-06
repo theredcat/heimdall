@@ -1,18 +1,18 @@
 import cytoscape, {
-	CytoscapeOptions, EdgeDefinition, ElementsDefinition as CyElementsDefinition,
-	LayoutOptions, NodeDefinition, NodeSingular
+    CytoscapeOptions, EdgeDefinition, ElementsDefinition as CyElementsDefinition,
+    LayoutOptions, NodeDefinition, NodeSingular
 } from 'cytoscape'
 import UIkit from 'uikit'
-import UIkitElement from 'uikit'
-import { Host, HostModule, LogStreamType, LogLine, HostActionStatus } from './host'
-import { Link, LinkModule } from './link'
-import { Network, NetworkModule } from './network'
-import './style/index.less'
 import { Terminal } from 'xterm'
 import { FitAddon } from 'xterm-addon-fit'
-import { syntaxHighlight } from './utils'
-import { Logger } from './logger'
 import { Module } from './datasources/index'
+import { Host, HostActionStatus, HostModule } from './host'
+import { Link, LinkModule } from './link'
+import { Logger } from './logger'
+import { Network, NetworkModule } from './network'
+import './style/index.less'
+import { syntaxHighlight } from './utils'
+const coseBilkent = require('cytoscape-cose-bilkent')
 
 const cxtmenu = require('cytoscape-cxtmenu')
 const UIkitUtil: any = UIkit.util
@@ -98,7 +98,8 @@ export class Infrastructure {
 
 	constructor(graphContainer: HTMLElement) {
 		this.hosts = new Map<string, Host>();
-		cytoscape.use(cxtmenu);
+		cytoscape.use( cxtmenu )
+		cytoscape.use( coseBilkent )
 		this.cy = cytoscape(<CytoscapeOptions>{
 			container: graphContainer,
 			ready: function() { },
@@ -442,10 +443,12 @@ export class Infrastructure {
 
 			console.log("Updating layout")
 			this.layout = this.cy.layout(<LayoutOptions>{
-				name: 'cose',
-				animation: true,
+				name: 'cose-bilkent',
+				animation: false,
 				nodeDimensionsIncludeLabels: true,
-				componentSpacing: 50,
+				fit: true,
+				tile: true,
+				gravityRange: 20.0
 			})
 			this.layout.run()
 			this.lastUpdateId = updateId
