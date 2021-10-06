@@ -19,5 +19,8 @@ pre-symlink:
 post-symlink:
 
 release:
-	docker-compose -f docker-compose.yml -f docker-compose.release.yml build heimdall-proxy
+	export USER_UID=$(id -u) && \
+	export USER_GID=$(id -g) && \
+	docker-compose -f docker-compose.yml -f docker-compose.release.yml build heimdall-proxy && \
+	[ y = "$$(echo "Publish (y to confirm) ? :" 1>&2; read confirm; echo -n $$confirm)" ] && \
 	docker-compose -f docker-compose.yml -f docker-compose.release.yml push heimdall-proxy
