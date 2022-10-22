@@ -65,9 +65,15 @@ export class Infrastructure {
 			}
 		},
 		{
-			selector: 'node[state="paused"]',
+			selector: 'node[state="unhealthy"]',
 			css: {
 				'background-color': 'orange',
+			}
+		},
+		{
+			selector: 'node[state="suspended"]',
+			css: {
+				'background-color': 'lightblue',
 			}
 		},
 		{
@@ -187,7 +193,7 @@ export class Infrastructure {
 			}
 		})
 
-		if (node.data().state == 'running') {
+		if (node.data().state == 'running' || node.data().state == 'unhealthy') {
 			commands.push({
 				content: '<span class="fa fa-stop"> Stop</span>',
 				select: (element: NodeSingular) => {
@@ -260,7 +266,7 @@ export class Infrastructure {
 				}
 			});
 		}
-		if (node.data().state == 'stopped' || node.data().state == 'paused') {
+		if (node.data().state == 'stopped' || node.data().state == 'suspended') {
 			commands.push({
 				content: '<span class="fa fa-play"> Start</span>',
 				select: (element: NodeSingular) => {

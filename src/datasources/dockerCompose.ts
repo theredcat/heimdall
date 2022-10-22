@@ -88,6 +88,11 @@ type State = {
 	Running: boolean
 	StartedAt?: Date
 	Status: ("created"|"restarting"|"running"|"removing"|"paused"|"exited"|"dead")
+	Health?: ContainerHealth
+}
+
+type ContainerHealth = {
+	Status: ("healthy"|"unhealthy")
 }
 
 type Volume = {}
@@ -194,13 +199,31 @@ export class DockerCompose extends Module implements HostModule, NetworkModule, 
 		return output
 	}
 	getHostFromContainer(container: Container): Host {
-		let host = new Host(
+		let hostStatus: HostState
+
+		if (container.State.Status == 'running' && container.State.Health) {
+		   	if (container.State.Health.Status == 'healthy') {
+				hostStatus = HostState.running
+			} else {
+				hostStatus = HostState.unhealthy
+			}
+		} else if (container.State.Status == 'running') {
+			hostStatus = HostState.running
+		} else if (container.State.Status == 'paused') {
+			hostStatus = HostState.suspended
+		} else if (container.State.Status == 'exited') {
+			hostStatus = HostState.stopped
+		} else {
+			hostStatus = HostState.unknown
+		}
+
+		const host = new Host(
 			container.Id,
 			container.Name,
 			[].concat(Object.values(container.NetworkSettings.Networks).map((network) => {
 				return network.Aliases
 			})),
-			container.State.Status == 'running' ? HostState.running : HostState.stopped,
+			hostStatus,
 			this,
 			container,
 		)

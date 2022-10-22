@@ -5,6 +5,9 @@ import { Terminal } from 'xterm'
 export enum HostState {
 	running = 'running',
 	stopped = 'stopped',
+	unhealthy = 'unhealthy',
+	suspended = 'suspended',
+	unknown = 'unknown'
 }
 
 export enum HostActionStatus {
@@ -26,7 +29,7 @@ export class Host {
 	name: string
 	data: {[key: string]: any }
 	dns: string[]
-    state: ("running" | "stopped")
+    state: HostState
 	provider: HostModule
 	networks: { [key: string]: Network };
 
