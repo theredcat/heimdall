@@ -15,7 +15,10 @@ services:
 
   heimdall-node:
     image: heimdall-node:latest
-    build: ${HEIMDALL_PATH:-.}/docker/node
+    build:
+      dockerfile: Dockerfile
+      context: ${HEIMDALL_PATH:-.}/docker/node
+      target: dev
     volumes:
       - ${HEIMDALL_PATH:-./}:/srv/heimdall/current:cached
     expose:
@@ -25,4 +28,4 @@ services:
       GID: "${USER_GID?-Please export your GID in env var USER_GID}"
       APP_MODE: dev
       APP_DOMAIN: localhost
-      DOCKER_API_URL: "http://localhost:${HEIMDALL_NGINX_PORT:-80}/docker"
+      DOCKER_API_URL: "http://localhost:${HEIMDALL_NGINX_PORT:-80}/docker/"

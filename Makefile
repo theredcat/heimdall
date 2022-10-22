@@ -13,7 +13,11 @@ build: install
 	npm run build
 
 config:
+ifeq ($(APP_MODE),dev)
 	envsubst < ./config.json.tpl > ./config.json
+else
+	envsubst < ./config.json.tpl > ./dist/config.json
+endif
 
 pre-symlink:
 post-symlink:
