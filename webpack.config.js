@@ -63,12 +63,14 @@ module.exports = module.exports = (env, options) => {
 		webpackConfig['mode'] = 'development';
 		webpackConfig['devtool'] = 'inline-source-map';
 		webpackConfig['devServer'] = {
-			contentBase: path.join(__dirname, 'dist'),
+			static: path.join(__dirname, 'dist'),
 			compress: true,
 			host: "0.0.0.0",
-			public: 'http://'+process.env.APP_DOMAIN+'/',
-			disableHostCheck: true,
+			allowedHosts: "all",
 			port: 1337,
+			client: {
+				webSocketURL: `ws://${process.env.APP_DOMAIN}:${process.env.APP_PORT}/websocket`
+			}
 		};
 	}
 
