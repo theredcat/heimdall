@@ -126,7 +126,10 @@ export class Infrastructure {
 
 	// Fatarrow since that will be called by cytoscape and we need to keep 'this'
 	circularMenuOptions = (node: NodeSingular) => {
-		let commands: any[] = []
+		if (node.isEdge())
+			return []
+
+		const commands: any[] = []
 		commands.push({
 			content: '<span class="fa fa-info"> Info</span>',
 			select: (element: NodeSingular) => {
