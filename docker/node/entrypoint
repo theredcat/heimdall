@@ -1,5 +1,4 @@
 #!/bin/bash
-set -x
 USER_NAME=app
 USER_UID=$(id -u app)
 USER_GID=$(id -g app)
