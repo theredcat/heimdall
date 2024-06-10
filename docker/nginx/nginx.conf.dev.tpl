@@ -28,9 +28,13 @@ http {
     #gzip  on;
 
 	upstream docker {
-	  server unix:/var/run/docker.sock;
+		server ${DOCKER_BACKEND};
 	}
 
+	map $http_upgrade $connection_upgrade {
+		default upgrade;
+		"" close;
+	}
 	server {
 		listen 80;
 
@@ -40,13 +44,11 @@ http {
 			
 		location / {
 			proxy_pass http://${APP_CONTAINER}:1337;
-		}
-
-		location ~ /websocket$ {
-			proxy_pass http://${APP_CONTAINER}:1337;
 			proxy_http_version 1.1;
-			proxy_set_header Upgrade "websocket";
-			proxy_set_header Connection "upgrade";
+			proxy_set_header Host localhost;
+			proxy_cache_bypass $http_upgrade;
+			proxy_set_header Upgrade $http_upgrade;
+			proxy_set_header Connection $connection_upgrade;
 		}
 
 		location /docker/ {

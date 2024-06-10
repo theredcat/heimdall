@@ -10,8 +10,8 @@ RUN cd /tmp/build && make install && make build
 FROM base AS release
 COPY --from=release-build /tmp/build/dist/ /tmp/build/config.json.tpl /tmp/build/Makefile /srv/heimdall/current/
 COPY ./docker/nginx/nginx.conf.release.tpl /etc/nginx/nginx.conf.tpl
-CMD [ "/bin/bash", "-c", "envsubst < /etc/nginx/nginx.conf.tpl > /etc/nginx/nginx.conf && make config && nginx -g 'daemon off;'" ]
+CMD [ "/bin/bash", "-c", "envsubst '$${DOCKER_BACKEND}' < /etc/nginx/nginx.conf.tpl > /etc/nginx/nginx.conf && make config && nginx -g 'daemon off;'" ]
 
 FROM base AS dev
 COPY ./docker/nginx/nginx.conf.dev.tpl /etc/nginx/nginx.conf.tpl
-CMD [ "/bin/bash", "-c", "envsubst < /etc/nginx/nginx.conf.tpl > /etc/nginx/nginx.conf && nginx -g 'daemon off;'" ]
+CMD [ "/bin/bash", "-c", "envsubst '$${APP_CONTAINER},$${DOCKER_BACKEND}' < /etc/nginx/nginx.conf.tpl > /etc/nginx/nginx.conf && nginx -g 'daemon off;'" ]

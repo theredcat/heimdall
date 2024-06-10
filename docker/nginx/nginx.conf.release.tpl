@@ -28,7 +28,7 @@ http {
     #gzip  on;
 
 	upstream docker {
-	  server unix:/var/run/docker.sock;
+	  server ${DOCKER_BACKEND};
 	}
 
 	server {

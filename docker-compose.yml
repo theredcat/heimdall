@@ -12,6 +12,7 @@ services:
       - ${DOCKER_SOCKET_PATH:-/var/run/docker.sock}:/var/run/docker.sock
     environment:
       APP_CONTAINER: heimdall-node
+      DOCKER_BACKEND: "unix:/var/run/docker.sock"
 
   heimdall-node:
     image: heimdall-node:latest
