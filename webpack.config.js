@@ -31,10 +31,6 @@ module.exports = module.exports = (env, options) => {
 							}
 						}
 					]
-				},
-				{
-					test: /\.json$/i,
-					loader: 'file'
 				}
 			]
 		},

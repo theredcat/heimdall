@@ -1,4 +1,5 @@
 import { Request } from './request'
+import config from '../config.json'
 
 export class Config {
 	config: any = null
@@ -6,19 +7,10 @@ export class Config {
 
 	constructor() {
 		this.httpClient = new Request(new URL(document.URL))
-	}
-
-	private async refreshCache() {
-		await this.httpClient.get('config.json').then((config) => {
-			this.config = config
-			return Promise.resolve(null)
-		})
+		this.config = config
 	}
 
 	async get(name: string): Promise<any> {
-		if (this.config === null) {
-			await this.refreshCache()
-		}
 		return this.config[name]
 	}
 }
