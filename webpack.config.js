@@ -69,7 +69,7 @@ module.exports = module.exports = (env, options) => {
 			allowedHosts: "all",
 			port: 1337,
 			client: {
-				webSocketURL: `ws://${process.env.APP_DOMAIN}:${process.env.APP_PORT}/websocket`
+				webSocketURL: `ws://${process.env.APP_DOMAIN}:${process.env.APP_PORT}/ws`
 			}
 		};
 	}
