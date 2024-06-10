@@ -8,13 +8,15 @@ let graph: Infrastructure
 const config = new Config()
 let counter = 0
 let focused = true
-const updateGraph = () => {
+
+const updateGraph = async () => {
 	console.log(counter)
 	counter++
 	if (!focused) {
 		setTimeout(updateGraph, 10000)
 	} else {
-		graph.update().then(() => setTimeout(updateGraph, 1000))
+		await graph.update()
+		setTimeout(updateGraph, 1000)
 	}
 }
 window.onfocus = () => {
