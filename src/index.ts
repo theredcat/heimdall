@@ -1,6 +1,7 @@
 import { Infrastructure } from './infrastructure'
 import { DockerCompose } from './datasources/dockerCompose'
 import { Config } from './config'
+import style from './style/graph.json'
 
 const css = require('@xterm/xterm/css/xterm.css')
 
@@ -13,7 +14,7 @@ const updateGraph = async () => {
 	console.log(counter)
 	counter++
 	if (!focused) {
-		setTimeout(updateGraph, 10000)
+		setTimeout(updateGraph, 1000)
 	} else {
 		await graph.update()
 		setTimeout(updateGraph, 1000)
@@ -29,14 +30,18 @@ window.onblur = () => {
 window.addEventListener('DOMContentLoaded', async function() {
 	const dockerApiUrl = await config.get('docker_api_url')
 	let compose = new DockerCompose(new URL(dockerApiUrl), '', true)
-	graph = new Infrastructure(document.getElementById('cy'))
+	graph = new Infrastructure(document.getElementById('cy'), style)
 	graph.addDataSource(compose)
+	await graph.update(true)
 	updateGraph()
 })
 
 const booleanOptions = <HTMLCollectionOf<HTMLInputElement>> document.getElementsByClassName('option-boolean')
-Array.from(booleanOptions).forEach((item) => {
-	item.onchange = () => {
-		graph.update()
+Array.from(booleanOptions).forEach(item => {
+	item.onchange = async () => {
+		await graph.update(true)
 	}
 })
+document.getElementById('action-rearrange-nodes').onclick = () => {
+	graph.update(true)
+}

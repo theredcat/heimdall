@@ -23,7 +23,6 @@ export class Infrastructure {
 	hosts: Map<string, Host> = new Map()
 	networks: Map<string, Network> = new Map()
 	links: Map<string, Link> = new Map()
-	lastUpdateId: string = ""
 	modules: Module[] = []
 	logger: Logger
 
@@ -32,84 +31,15 @@ export class Infrastructure {
 		'menu-display-networks': 'boolean'
 	}
 
-	static style = [
-		{
-			selector: 'node:active',
-			css: {
-				'overlay-opacity': '0',
-			}
-		},
-		{
-			selector: 'edge',
-			css: {
-				'curve-style': 'bezier',
-				'target-arrow-shape': 'triangle',
-			}
-		},
-		{
-			selector: 'node[type="host"]',
-			css: {
-				'content': 'data(name)',
-			}
-		},
-		{
-			selector: 'node[state="running"]',
-			css: {
-				'background-color': 'green',
-			}
-		},
-		{
-			selector: 'node[state="stopped"]',
-			css: {
-				'background-color': 'red',
-			}
-		},
-		{
-			selector: 'node[state="unhealthy"]',
-			css: {
-				'background-color': 'orange',
-			}
-		},
-		{
-			selector: 'node[state="suspended"]',
-			css: {
-				'background-color': 'lightblue',
-			}
-		},
-		{
-			selector: 'node[type="network"]',
-			css: {
-				'content': 'data(name)',
-				'shape': 'rectangle',
-			}
-		},
-		{
-			selector: 'edge[type="l2link"]',
-			style: {
-				'target-arrow-shape': 'none',
-				'curve-style': 'bezier',
-				'line-color': 'blue',
-			}
-		},
-		{
-			selector: 'edge[type="l7link"]',
-			style: {
-				'target-arrow-shape': 'triangle',
-				'target-arrow-color': 'grey',
-				'curve-style': 'bezier',
-				'line-color': 'grey',
-			}
-		},
-	]
 
-	constructor(graphContainer: HTMLElement) {
+	constructor(graphContainer: HTMLElement, style: any) {
 		this.hosts = new Map<string, Host>();
 		cytoscape.use( cxtmenu )
 		cytoscape.use( coseBilkent )
 		this.cy = cytoscape(<CytoscapeOptions>{
 			container: graphContainer,
 			ready: function() { },
-			style: Infrastructure.style,
+			style: style,
 			elements: [],
 			minZoom: 0.1,
 			maxZoom: 10,
@@ -139,29 +69,16 @@ export class Infrastructure {
 					4
 				))
 
-				const dialog: any = this.getWideDialog(`<div class="codeblock">${infoString}</div>`)
-				dialog.show()
+				const dialog = this.getWideDialog(`<div class="codeblock">${infoString}</div>`)
+				dialog.dialog.show()
 			}
 		});
 		commands.push({
 			content: '<span class="fa fa-file"> Logs</span>',
 			select: (element: NodeSingular) => {
-				this.hosts.get(node.id().slice(5)).getLogs().then((logsData) => {
+				this.hosts.get(node.id().slice(5)).getLogs().then(async (logsData) => {
 					if (logsData instanceof Terminal) {
-						const term = logsData
-						const dialog = this.getWideDialog('<div class="terminal"></div>')
-						const fitAddon = new FitAddon()
-						term.loadAddon(fitAddon)
-
-						new ResizeObserver(() => fitAddon.fit()).observe(dialog.$el.querySelector('.terminal'))
-						UIkitUtil.on(dialog.$el, 'shown', () => {
-							term.open(dialog.$el.querySelector('.terminal'))
-							fitAddon.fit()
-						})
-						UIkitUtil.on(dialog.$el, 'close', () => {
-							term.dispose()
-						})
-						dialog.show()
+						const dialog = this.showTerminalInDialog(logsData)
 					} else {
 						let timestamps: string = ""
 						let logs: string = ""
@@ -186,11 +103,10 @@ export class Infrastructure {
 								<div class="codeblock">${logs}</div>
 							</div>
 						`)
-						UIkitUtil.on(dialog.$el, 'shown', () => {
-							const pre = dialog.$el.getElementsByClassName('logs')[0]
-							pre.scrollTop = pre.scrollHeight;
+						UIkitUtil.on(dialog, 'shown', () => {
+							dialog.content.scrollTop = dialog.content.scrollHeight;
 						})
-						dialog.show()
+						dialog.dialog.show()
 					}
 				})
 			}
@@ -202,13 +118,14 @@ export class Infrastructure {
 				select: (element: NodeSingular) => {
 					node.unselect()
 					const host = this.hosts.get(node.id().slice(5))
+					UIkit.notification("Stopping ...", {pos: 'top-right'})
 					host.stop().then((actionStatus) => {
 						if(actionStatus == HostActionStatus.notSupported) {
-							UIkit.modal.alert('Not implemented')
+							UIkit.modal.alert('This host provider doensn\'t support the stop action')
 						} else if(actionStatus == HostActionStatus.fail) {
-							UIkit.modal.alert('Failed')
+							UIkit.modal.alert('Failed to stop host')
 						} else {
-							UIkit.modal.alert('Host stopped')
+							UIkit.notification("Host stopped", {pos: 'top-right'})
 						}
 					})
 				}
@@ -218,50 +135,38 @@ export class Infrastructure {
 				select: (element: NodeSingular) => {
 					node.unselect()
 					const host = this.hosts.get(node.id().slice(5))
+					const notification = UIkit.notification('Restarting <div uk-spinner></div>', {pos: 'top-right', timeout: 0})
 					host.stop().then((actionStatus) => {
 						if(actionStatus == HostActionStatus.notSupported) {
-							UIkit.modal.alert('Not implemented')
+							UIkit.modal.alert('This host provider doensn\'t support the restart action')
 						} else if(actionStatus == HostActionStatus.fail) {
 							UIkit.modal.alert('Failed')
 						} else {
 							host.start().then((actionStatus) => {
+								notification.close(true)
 								if(actionStatus == HostActionStatus.notSupported) {
-									UIkit.modal.alert('Not implemented')
+									UIkit.modal.alert('This host provider doensn\'t support the start action')
 								} else if(actionStatus == HostActionStatus.fail) {
-									UIkit.modal.alert('Failed')
+									UIkit.modal.alert('Host restart failed')
 								} else {
-									UIkit.modal.alert('Host restarted')
+									UIkit.notification(`${element.data('name')} restarted`, {pos: 'top-right'})
 								}
 							})
 						}
 					})
-					UIkit.modal.dialog('<div class="uk-padding"><span class="uk-text-lead">Restarting <div uk-spinner></div></span></div>')
 				}
 			})
 			commands.push({
 				content: '<span class="fa fa-terminal"> Execute</span>',
 				select: (element: NodeSingular) => {
-					UIkit.modal.prompt('Command to execute :', '').then((command) => {
+					UIkit.modal.prompt('Command to execute :', '/bin/bash').then((command) => {
 						if(command.length > 0) {
 							UIkit.modal.dialog('<div class="uk-padding"><span class="uk-text-lead">Running <div uk-spinner></div></span></div>')
 							this.hosts.get(node.id().slice(5)).executeCommand(command).then((execData) => {
 								if (execData instanceof Terminal) {
-									const term = execData
-									const dialog = this.getWideDialog('<div class="terminal"></div>')
-									const fitAddon = new FitAddon()
-									term.loadAddon(fitAddon)
-			
-									new ResizeObserver(() => fitAddon.fit()).observe(dialog.$el.querySelector('.terminal'))
-									UIkitUtil.on(dialog.$el, 'shown', () => {
-										term.open(dialog.$el.querySelector('.terminal'))
-										fitAddon.fit()
-									})
-									UIkitUtil.on(dialog.$el, 'close', () => {
-										term.dispose()
-									})
-									dialog.show()
+									this.showTerminalInDialog(execData)
 								} else {
-									UIkit.modal.alert('Not implemented')
+									UIkit.modal.alert('This host provider doensn\'t support the execute action')
 								}
 							})
 						}
@@ -277,11 +182,11 @@ export class Infrastructure {
 					const host = this.hosts.get(node.id().slice(5))
 					host.start().then((actionStatus) => {
 						if(actionStatus == HostActionStatus.notSupported) {
-							UIkit.modal.alert('Not implemented')
+							UIkit.modal.alert('This host provider doensn\'t support the start action')
 						} else if(actionStatus == HostActionStatus.fail) {
 							UIkit.modal.alert('Failed')
 						} else {
-							UIkit.modal.alert('Host started')
+							UIkit.notification('Host started', {pos: 'top-right'})
 						}
 					})
 				}
@@ -308,15 +213,33 @@ export class Infrastructure {
 		return commands
 	}
 
-	private getWideDialog(html: string): any {
-		const dialog: any = UIkit.modal(
+	private getWideDialog(htmlString: string): { dialog: UIkit.UIkitModalElement; content: HTMLElement } {
+		const element = UIkitUtil.$(
 			`<div class="uk-modal">
 				<div class="uk-modal-dialog wideDialog">
-					${html}
+					${htmlString}
 				</div>
 			</div>`
 		)
-		return dialog
+		const dialog: any = UIkit.modal(element)
+		const content: HTMLElement = dialog.$el
+		return {dialog, content }
+	}
+
+	private async showTerminalInDialog(term: Terminal) {
+		const dialog = this.getWideDialog('<div class="terminal"></div>')
+		const fitAddon = new FitAddon()
+		term.loadAddon(fitAddon)
+		new ResizeObserver(() => fitAddon.fit()).observe(dialog.content)
+		UIkitUtil.on(dialog.content, 'shown', () => {
+			const terminalDiv = dialog.content.getElementsByClassName('terminal')[0] as HTMLElement
+			term.open(terminalDiv)
+			fitAddon.fit()
+		})
+		dialog.dialog.show()
+		UIkitUtil.on(dialog.content, 'closed', () => {
+			term.dispose()
+		})
 	}
 
 	public getOption(option: string, optionType: string): any {
@@ -344,7 +267,8 @@ export class Infrastructure {
 		this.modules.push(module)
 	}
 
-	public update(): Promise<boolean> {
+	public update(autoArrangeNodes = false): Promise<boolean> {
+		this.logger.debug('Infrastructure: Updating graph')
 		const modulesReturns: Promise<Host[]|Network[]|Link[]>[] = []
 		for (const module of this.modules) {
 			let hostsPromise: Promise<Host[]>
@@ -362,95 +286,85 @@ export class Infrastructure {
 			}
 		}
 		return Promise.all(modulesReturns).then(() => {
-			this.updateView()
+			this.updateView(autoArrangeNodes)
 			return new Promise<boolean>((resolve,reject) => {
 				resolve(true)
 			})
 		})
 	}
 
-	private updateView() {
-		let nodesDefinitions: NodeDefinition[] = []
-		let edgesDefinitions: EdgeDefinition[] = []
+	private updateView(autoArrangeNodes: Boolean) {
+		const nodesDefinitions: NodeDefinition[] = []
+		const edgesDefinitions: EdgeDefinition[] = []
 
-		const updateId = JSON.stringify([
-			Array.from(this.networks.keys()),
-			Array.from(this.hosts.keys()),
-			Array.from(this.links.keys()),
-			this.getOptions()
-		])
-
-		this.logger.debug('Last data ID :' + this.lastUpdateId + '. New data ID ' + updateId)
-
-		if (this.lastUpdateId != updateId) {
-
-			if (this.getOption('menu-display-networks', 'boolean')) {
-				// Networks
-				this.networks.forEach((network: Network, networkId: string) => {
-					nodesDefinitions.push({
-						data: {
-							id: "network-" + network.id,
-							name: network.name,
-							type: "network"
-						}
-					})
-				})
-			}
-
-			// Hosts
-			this.hosts.forEach((host: Host, hostId: string) => {
+		if (this.getOption('menu-display-networks', 'boolean')) {
+			// Networks
+			for (const network of this.networks.values()) {
 				nodesDefinitions.push({
 					data: {
-						id: "host-" + host.id,
-						name: host.name,
-						state: host.state,
-						type: "host"
+						id: "network-" + network.id,
+						name: network.name,
+						type: "network"
 					}
-				});
-				if (this.getOption('menu-display-networks', 'boolean')) {
-					for (const network of Object.values(host.getNetworks())) {
-						edgesDefinitions.push({
-							data: {
-								id: "host-" + host.id + " -> network-" + network.id,
-								source: "host-" + host.id,
-								target: "network-" + network.id,
-								type: 'l2link'
-							}
-						})
-					}
-				}
-			});
-
-			// Links
-			if (this.getOption('menu-display-apps', 'boolean')) {
-				this.links.forEach((link: Link, linkId: string) => {
-					edgesDefinitions.push({
-						data: {
-							id: 'host'+link.source.id + " -> host-" + link.target.id,
-							source: 'host-'+link.source.id,
-							target: 'host-'+link.target.id,
-							type: 'l7link'
-						}
-					})
 				})
 			}
+		}
 
-			let elements: CyElementsDefinition = {
-				nodes: nodesDefinitions,
-				edges: edgesDefinitions
-			}
-			this.cy.json({
-				elements: elements
-			})
-
-			// Remove networks with no hosts
-			this.cy.elements('node[type="network"]').forEach(node => {
-				if (node.connectedEdges().length == 0) {
-					node.remove()
+		// Hosts
+		this.hosts.forEach((host: Host, hostId: string) => {
+			nodesDefinitions.push({
+				data: {
+					id: "host-" + host.id,
+					name: host.name,
+					state: host.state,
+					type: "host"
 				}
-			})
+			});
+			if (this.getOption('menu-display-networks', 'boolean')) {
+				for (const network of Object.values(host.getNetworks())) {
+					edgesDefinitions.push({
+						data: {
+							id: "host-" + host.id + " -> network-" + network.id,
+							source: "host-" + host.id,
+							target: "network-" + network.id,
+							type: 'l2link'
+						}
+					})
+				}
+			}
+		});
 
-			console.log("Updating layout")
+		// Links
+		if (this.getOption('menu-display-apps', 'boolean')) {
+			for (const link of this.links.values()) {
+				edgesDefinitions.push({
+					data: {
+						id: 'host'+link.source.id + " -> host-" + link.target.id,
+						source: 'host-'+link.source.id,
+						target: 'host-'+link.target.id,
+						type: 'l7link'
+					}
+				})
+			}
+		}
+
+		let elements: CyElementsDefinition = {
+			nodes: nodesDefinitions,
+			edges: edgesDefinitions
+		}
+		this.cy.json({
+			elements: elements
+		})
+
+		// Remove networks with no hosts
+		this.cy.elements('node[type="network"]').forEach(node => {
+			if (node.connectedEdges().length == 0) {
+				node.remove()
+			}
+		})
+
+		if (autoArrangeNodes) {
+			this.logger.info("Updating layout")
 			this.layout = this.cy.layout(<LayoutOptions>{
 				name: 'cose-bilkent',
 				animation: false,
@@ -458,9 +372,8 @@ export class Infrastructure {
 				fit: true,
 				tile: true,
 				gravityRange: 20.0
-			})
+			});
 			this.layout.run()
-			this.lastUpdateId = updateId
 		}
 	}
 
