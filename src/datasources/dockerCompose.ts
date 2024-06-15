@@ -257,6 +257,7 @@ export class DockerCompose extends Module implements HostModule, NetworkModule, 
 				for (let containerId of containerIds) {
 					containerPromises.push(
 						this.httpClient.get<Container>('/containers/'+containerId+'/json').then((container) => {
+							container.Name = container.Name.substring(1)
 							this.logger.debug('Loaded container'+container.Name)
 							return container
 						})
