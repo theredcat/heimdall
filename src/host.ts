@@ -1,6 +1,6 @@
 import { Module } from './datasources/index'
 import { Network } from './network'
-import { Terminal } from 'xterm'
+import { Terminal } from '@xterm/xterm'
 
 export enum HostState {
 	running = 'running',

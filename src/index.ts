@@ -2,7 +2,7 @@ import { Infrastructure } from './infrastructure'
 import { DockerCompose } from './datasources/dockerCompose'
 import { Config } from './config'
 
-const css = require('xterm/css/xterm.css')
+const css = require('@xterm/xterm/css/xterm.css')
 
 let graph: Infrastructure
 const config = new Config()

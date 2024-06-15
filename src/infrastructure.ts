@@ -3,8 +3,8 @@ import cytoscape, {
     LayoutOptions, NodeDefinition, NodeSingular
 } from 'cytoscape'
 import UIkit from 'uikit'
-import { Terminal } from 'xterm'
-import { FitAddon } from 'xterm-addon-fit'
+import { Terminal } from '@xterm/xterm'
+import { FitAddon } from '@xterm/addon-fit'
 import { Module } from './datasources/index'
 import { Host, HostActionStatus, HostModule } from './host'
 import { Link, LinkModule } from './link'

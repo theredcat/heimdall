@@ -1,10 +1,10 @@
 import { split } from 'shlex'
-import { Terminal, IDisposable, ITerminalAddon } from 'xterm';
-import { AttachAddon } from 'xterm-addon-attach'
+import { Terminal, IDisposable, ITerminalAddon } from '@xterm/xterm';
 import { Host, HostActionStatus, HostModule, HostState, LogLine, LogStreamType } from '../host'
 import { Link, LinkModule } from '../link'
 import { Network, NetworkModule } from '../network'
 import { Module } from './index'
+import { AttachAddon } from '@xterm/addon-attach'
 
 type ContainerPort = {
 	PrivatePort: number
