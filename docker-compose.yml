@@ -1,33 +1,43 @@
 version: '3.7'
 
+x-build-options: &build-options
+  dockerfile: ${HEIMDALL_PATH:-.}/docker/node/Dockerfile
+  context: ${HEIMDALL_PATH:-.}
+  target: dev
+  args:
+    NODE_VERSION: "20.14.0"
+    GOSU_VERSION: "1.11"
+
+x-environment: &environment
+  UID: "${USER_UID?-Please export your UID in env var USER_UID}"
+  GID: "${USER_GID?-Please export your GID in env var USER_GID}"
+
 services:
   heimdall-proxy:
-    build:
-      dockerfile: ${HEIMDALL_PATH:-.}/docker/nginx/Dockerfile
-      context: ${HEIMDALL_PATH:-.}
-      target: dev
+    build: *build-options
     ports:
-      - 127.0.0.1:${HEIMDALL_NGINX_PORT:-80}:80
+      - 127.0.0.1:${HEIMDALL_HTTP_PORT:-80}:1337
     volumes:
       - ${DOCKER_SOCKET_PATH:-/var/run/docker.sock}:/var/run/docker.sock
+      - ${HEIMDALL_PATH:-./}:/srv/heimdall/current:cached
+    working_dir: '/srv/heimdall/current/proxy'
+    command: ["envsubst < ./config.json.tpl > ./config.json && npm ci && npm run dev"]
+    user: root
     environment:
-      APP_CONTAINER: heimdall-node
+      <<: *environment
       DOCKER_BACKEND: "unix:/var/run/docker.sock"
 
-  heimdall-node:
-    image: heimdall-node:latest
-    build:
-      dockerfile: Dockerfile
-      context: ${HEIMDALL_PATH:-.}/docker/node
-      target: dev
+  heimdall-webpack:
+    build: *build-options
     volumes:
       - ${HEIMDALL_PATH:-./}:/srv/heimdall/current:cached
-    expose:
-      - 1337
+    ports:
+      - 127.0.0.1:${HEIMDALL_HTTP_PORT_WEBPACK:-8080}:1337
+    working_dir: '/srv/heimdall/current/client'
+    command: ["envsubst < ./config.json.tpl > ./config.json && npm ci && npm run dev"]
     environment:
-      UID: "${USER_UID?-Please export your UID in env var USER_UID}"
-      GID: "${USER_GID?-Please export your GID in env var USER_GID}"
+      <<: *environment
       APP_MODE: dev
       APP_DOMAIN: localhost
-      APP_PORT: ${HEIMDALL_NGINX_PORT:-80}
-      DOCKER_API_URL: "http://localhost:${HEIMDALL_NGINX_PORT:-80}/docker/"
+      APP_PORT: ${HEIMDALL_HTTP_PORT:-80}
+      DOCKER_API_URL: "http://localhost:${HEIMDALL_HTTP_PORT:-80}/docker/"

@@ -2,7 +2,7 @@
 USER_NAME=app
 USER_UID=$(id -u app)
 USER_GID=$(id -g app)
-
+set -x
 if [ "$UID" != "$USER_UID" ] && ! id "$UID"; then
     gosu root usermod -u "$UID" "$USER_NAME"
 fi
@@ -11,4 +11,4 @@ if ! [ -z "$GID" ] && [ "$GID" != "$USER_GID" ] && ! id "$GID"; then
     gosu root groupmod -g "$GID" "$USER_NAME"
 fi
 
-gosu $UID "$@"
+gosu $UID bash -c "$@"
