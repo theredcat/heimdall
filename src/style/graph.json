@@ -1,0 +1,69 @@
+[
+	{
+		"selector": "node:active",
+		"css": {
+			"overlay-opacity": 0
+		}
+	},
+	{
+		"selector": "edge",
+		"css": {
+			"curve-style": "bezier",
+			"target-arrow-shape": "triangle-backcurve"
+		}
+	},
+	{
+		"selector": "node[type=\"host\"]",
+		"css": {
+			"content": "data(name)"
+		}
+	},
+	{
+		"selector": "node[state=\"running\"]",
+		"css": {
+			"background-color": "green"
+		}
+	},
+	{
+		"selector": "node[state=\"stopped\"]",
+		"css": {
+			"background-color": "red"
+		}
+	},
+	{
+		"selector": "node[state=\"unhealthy\"]",
+		"css": {
+			"background-color": "orange"
+		}
+	},
+	{
+		"selector": "node[state=\"suspended\"]",
+		"css": {
+			"background-color": "lightblue"
+		}
+	},
+	{
+		"selector": "node[type=\"network\"]",
+		"css": {
+			"content": "data(name)",
+			"shape": "rectangle"
+		}
+	},
+	{
+		"selector": "edge[type=\"l2link\"]",
+		"style": {
+			"target-arrow-shape": "none",
+			"curve-style": "bezier",
+			"line-color": "blue"
+		}
+	},
+	{
+		"selector": "edge[type=\"l7link\"]",
+		"style": {
+			"target-arrow-shape": "triangle",
+			"target-arrow-color": "grey",
+			"curve-style": "bezier",
+			"line-color": "grey"
+		}
+	}
+]

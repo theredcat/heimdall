@@ -1,0 +1,160 @@
+<template>
+  <div>
+    <nav class="uk-navbar-container" uk-navbar>
+      <div class="uk-navbar-left">
+        <ul class="uk-navbar-nav">
+          <li class="uk-active">
+            <a href="#">Heimdall</a>
+          </li>
+          <li>
+            <a href="#">Display</a>
+            <div class="uk-navbar-dropdown">
+              <ul class="uk-nav uk-navbar-dropdown-nav">
+                <li>Actions</li>
+                <li class="uk-nav-divider"></li>
+                <li>
+                  <button @click="rearrangeNodes" class="uk-button uk-button-small uk-button-default">
+                    Sort nodes
+                  </button>
+                </li>
+                <li>Links</li>
+                <li class="uk-nav-divider"></li>
+                <li>
+                  <label style="margin: 20px">
+                    <input v-model="displayNetworks" type="checkbox" class="uk-checkbox">
+                    <span style="margin: 5px">Networks</span>
+                  </label>
+                </li>
+                <li>
+                  <label style="margin: 20px">
+                    <input v-model="displayApps" type="checkbox" class="uk-checkbox">
+                    <span style="margin: 5px">Application</span>
+                  </label>
+                </li>
+                <li>Options</li>
+                <li class="uk-nav-divider"></li>
+                <li>
+                  <label style="margin: 20px">
+                    <input v-model="autoRefresh" type="checkbox" class="uk-checkbox">
+                    <span style="margin: 5px">Auto refresh</span>
+                  </label>
+                </li>
+              </ul>
+            </div>
+          </li>
+        </ul>
+      </div>
+    </nav>
+
+    <div class="uk-container uk-container-expand">
+      <div id="cy" uk-height-viewport="offset-top: true; offset-bottom: true"
+        style="min-height: calc((100vh - 150px) - 152px);">
+      </div>
+    </div>
+  </div>
+</template>
+
+<script lang="ts">
+import { defineComponent, onMounted, ref } from 'vue'
+import { Infrastructure } from '@src/infrastructure'
+import { DockerComposeClient } from '@src/datasources/dockerCompose'
+import style from '@src/style/graph.json'
+import '@xterm/xterm/css/xterm.css'
+
+export default defineComponent({
+  name: 'App',
+  setup() {
+    const graph = ref<Infrastructure | null>(null)
+    const focused = ref(true)
+    const counter = ref(0)
+
+    const displayNetworks = ref(true)
+    const displayApps = ref(true)
+    const autoRefresh = ref(true)
+
+    const updateGraph = async () => {
+      counter.value++
+      if (!focused.value || !autoRefresh.value) {
+        setTimeout(updateGraph, 1000)
+      } else if (graph.value) {
+        await graph.value.update()
+        setTimeout(updateGraph, 1000)
+      }
+    }
+
+    const rearrangeNodes = async () => {
+      if (graph.value) {
+        await graph.value.update(true)
+      }
+    }
+
+    onMounted(async () => {
+      window.onfocus = () => { focused.value = true }
+      window.onblur = () => { focused.value = false }
+
+      const compose = new DockerComposeClient()
+      graph.value = new Infrastructure(document.getElementById('cy')!, style)
+      graph.value.addDataSource(compose)
+      await graph.value.update(true)
+      updateGraph()
+    })
+
+    return {
+      displayNetworks,
+      displayApps,
+      autoRefresh,
+      rearrangeNodes,
+    }
+  }
+})
+</script>
+
+<style scoped>
+body {
+  font-family: helvetica;
+  font-size: 14px;
+  overflow: hidden;
+}
+.cxtmenu-disabled {
+  opacity: 0.333;
+}
+.uk-modal > .wideDialog {
+  width: 100%;
+  height: 100%;
+}
+.uk-modal > .wideDialog > div {
+  height: 100%;
+}
+.codeblock {
+  padding: 10px 0 0 10px;
+  display: block;
+  font-family: monospace;
+  white-space: pre;
+  unicode-bidi: embed;
+  overflow: auto
+}
+.lineprefix {
+  padding: 10px 10px 0 10px;
+  float: left;
+  display: block;
+  font-family: monospace;
+}
+.log-line-stdout {
+  color: black;
+}
+.log-line-stdin {
+  color: darkgreen;
+}
+.log-line-stderr {
+  color: red;
+}
+.terminal {
+  background-color: black;
+}
+.string { color: green; }
+.number { color: darkorange; }
+.boolean { color: blue; }
+.null { color: magenta; }
+.key { color: red; }
+</style>
+
