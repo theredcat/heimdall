@@ -29,9 +29,14 @@
   },
   "homepage": "https://github.com/theredcat/stackmanager#readme",
   "devDependencies": {
+    "@tailwindcss/postcss": "^4.1.4",
     "@types/koa-static": "^4.0.4",
     "@vitejs/plugin-vue": "^5.2.3",
+    "autoprefixer": "^10.4.21",
     "eslint": "^8.26.0",
+    "postcss": "^8.5.3",
+    "tailwindcss": "^4.1.4",
+    "tailwindcss-primeui": "^0.6.1",
     "ts-loader": "^9.5.2",
     "tsx": "^4.19.3",
     "vite": "^6.3.2"

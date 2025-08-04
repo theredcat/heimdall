@@ -67,7 +67,7 @@ const items = computed(() => [
     icon: 'pi pi-cog',
     items: [
       {
-        label: 'Sort Nodes',
+        label: 'Re-arrange Nodes',
         icon: 'pi pi-sort-alt',
         command: () => emit('rearrange')
       },
@@ -84,7 +84,7 @@ const items = computed(() => [
   {
     label: 'Datasources',
     icon: 'pi pi-database',
-    items: datasourceMenuItems.value // 👈 On utilise le tableau dynamique ici
+    items: datasourceMenuItems.value
   }
 ])
 </script>

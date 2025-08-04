@@ -7,9 +7,12 @@ import Dialog from 'primevue/dialog'
 import InputText from 'primevue/inputtext'
 import DataTable from 'primevue/datatable'
 import Column from 'primevue/column'
+import Tooltip from 'primevue/tooltip'
 
-import Aura from '@primeuix/themes/aura';
+import Aura from '@primeuix/themes/aura'
+import 'primeicons/primeicons.css'
 
+import './style.css'
 import App from './App.vue'
 import Menubar from 'primevue/menubar'
 
@@ -27,5 +30,6 @@ app.component('InputText', InputText)
 app.component('DataTable', DataTable)
 app.component('Column', Column)
 app.component('Menubar', Menubar)
+app.directive('tooltip', Tooltip)
 
 app.mount('#app')

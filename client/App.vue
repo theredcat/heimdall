@@ -8,13 +8,13 @@
     @toggle-apps="displayApps = $event"
     @toggle-refresh="autoRefresh = $event"
     @rearrange="rearrangeNodes"
-    @open-datasource-config="openConfig"
+    @open-datasource-config="openDatasourceConfig"
   />
   <GraphView ref="graphView" />
   <DatasourceConfigModal
-    v-if="showConfig"
-    :config="selectedConfig"
-    @close="showConfig = false"
+    v-if="showDatasourceConfig"
+    :datasource="selectedDatasource"
+    @close="showDatasourceConfig = false"
     @save="updateDatasourceConfig"
   />
 </template>
@@ -24,29 +24,69 @@ import { ref, onMounted } from 'vue'
 import AppNavbar from './components/AppNavbar.vue'
 import GraphView from './components/GraphView.vue'
 import DatasourceConfigModal from './components/DatasourceConfigModal.vue'
-import { DockerComposeClient } from '@src/datasources/dockerCompose'
+
+// Datasources
+import type { ClientModule } from '@src/datasources/index.ts'
+import { DockerComposeClient } from '@src/datasources/dockerCompose/client.ts'
+import { DockerComposeClientConfig } from '@src/datasources/dockerCompose/common.ts'
+
+type AllDatasourceConfigs = DockerComposeClientConfig
 
 const displayNetworks = ref(true)
 const displayApps = ref(true)
 const autoRefresh = ref(true)
+const showDatasourceConfig = ref(false)
+const selectedDatasource = ref<ClientModule<AllDatasourceConfigs> | null>(null)
 
-const showConfig = ref(false)
-const selectedConfig = ref<any>(null)
+const datasources = ref<ClientModule<AllDatasourceConfigs>[]>([])
 
-const datasources = ref([
-  { name: 'Docker Compose', type: 'docker', instance: new DockerComposeClient() }
-])
+const socket = ref<WebSocket | null>(null)
 
-const graphView = ref()
+const connectWebSocket = () => {
+  socket.value = new WebSocket('ws://localhost:1337') // Remplace par l'URL de ton serveur
 
-const openConfig = (config: any = null) => {
-  selectedConfig.value = config
-  showConfig.value = true
+  socket.value.onopen = () => {
+    console.log('WebSocket connecté')
+  }
+
+  socket.value.onmessage = (event) => {
+    const message = JSON.parse(event.data)
+
+    if (message.type === 'datasource-list') {
+      updateDatasources(message.data)
+    }
+  }
+
+  socket.value.onclose = () => {
+    console.log('WebSocket fermé')
+  }
+
+  socket.value.onerror = (error) => {
+    console.error('WebSocket erreur:', error)
+  }
 }
 
-const updateDatasourceConfig = (updatedConfig: any) => {
-  showConfig.value = false
-  selectedConfig.value = null
+const updateDatasources = (modules: string[]) => {
+  const availableDatasources = []
+
+  console.log(modules)
+  
+  if (modules.includes('dockerCompose')) {
+    availableDatasources.push(new DockerComposeClient())
+  }
+  console.log(availableDatasources)
+  datasources.value = availableDatasources
+}
+
+const openDatasourceConfig = (datasource: ClientModule<AllDatasourceConfigs> | null) => {
+  selectedDatasource.value = datasource
+  showDatasourceConfig.value = true
+}
+
+const updateDatasourceConfig = (updatedDatasourceConfig: any) => {
+  console.log(updatedDatasourceConfig)
+  showDatasourceConfig.value = false
+  selectedDatasource.value = null
 }
 
 const rearrangeNodes = async () => {
@@ -54,9 +94,10 @@ const rearrangeNodes = async () => {
 }
 
 onMounted(() => {
+  connectWebSocket() // Connexion WebSocket au moment du montage du composant
+
   datasources.value.forEach((ds) => {
     graphView.value?.addDatasource(ds.instance)
   })
 })
 </script>
-

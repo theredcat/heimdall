@@ -1,181 +1,16 @@
-import { AttachAddon } from '@xterm/addon-attach';
-import { Terminal } from '@xterm/xterm';
-import { split } from 'shlex';
-import { Host, HostActionStatus, HostModule, HostState, LogLine, LogStreamType } from '../host.ts';
-import { Link, LinkModule } from '../link.ts';
-import { Network, NetworkModule } from '../network.ts';
-import { ClientModule, ServerModule } from './index.ts';
+import { AttachAddon } from '@xterm/addon-attach'
+import { Terminal } from '@xterm/xterm'
+import { split } from 'shlex'
+import { ClientModule } from '../index.ts'
+import { Host, HostActionStatus, HostModule, HostState, LogLine, LogStreamType } from '../../host.ts'
+import { Network, NetworkModule } from '../../network.ts'
+import { Link, LinkModule } from '../../link.ts'
+import {
+  Container, DockerNetwork, DockerComposeClientConfig,
+  ContainerExitStatus, ExecInstance, State, clientConfig
+} from './common.ts'
 
-type ContainerPort = {
-	PrivatePort: number
-	Type: ("tcp" | "udp")
-}
-
-type ContainerExitStatus = {
-	StatusCode: number
-	Error?: any
-}
-
-type ContainerNetwork = {
-	IPAMConfig: string
-	Aliases: string[]
-	NetworkID: string
-	EndpointId: string
-	Gateway: string
-	IPAddress: string
-	IPPrefixLen: string
-	IPv6Gateway: string
-	GlobalIPv6Address: string
-	GlobalIPv6PrefixLen: string
-	MacAddress: string
-	DriverOpts: any
-}
-
-type DockerNetwork = {
-	Name: string
-	Id: string
-	Created: Date
-	Scope: string
-	Driver: string
-	EnableIPv6: boolean
-	IPAM: DockerNetworkIPAM
-	Internal: boolean
-	Attachable: boolean
-	Ingress: boolean
-	ConfigFrom: any
-	ConfigOnly: boolean
-	Options: { [key: string]: string}
-	Labels: any
-}
-
-type DockerNetworkIPAM = {
-	Driver: string
-	Options: any
-	Config: DockerNetworkIPAMConfig[]
-}
-
-type DockerNetworkIPAMConfig = {
-	Subnet: string
-	Gateway?: string
-}
-
-type Mount = {
-	Type: string
-	Source: string
-	Destination: string
-	Mode: string
-	RW: boolean
-	Propagation: string
-}
-
-type NetworkSettings = {
-	Networks: { [key: string]: ContainerNetwork }
-}
-
-type HostConfig = {
-	NetworkMode: string
-}
-
-type State = {
-	Error: string
-	ExitCode: number
-	FinishedAt?: Date
-	OOMKilled: boolean
-	Dead: boolean
-	Paused: boolean
-	Pid: number
-	Restarting:boolean
-	Running: boolean
-	StartedAt?: Date
-	Status: ("created"|"restarting"|"running"|"removing"|"paused"|"exited"|"dead")
-	Health?: ContainerHealth
-}
-
-type ContainerHealth = {
-	Status: ("healthy"|"unhealthy")
-}
-
-type Volume = {}
-
-type Config = {
-	Hostname: string
-	DomainName: string
-	User: string
-	AttachStdin: boolean
-	AttachStdout: boolean
-	AttachStderr: boolean
-	Tty: boolean
-	OpenStdin: boolean
-	StdinOnce: boolean
-	Env: string[]
-	Cmd: string[]
-	Image: string
-	Volumes: {[key:string]: Volume }
-	WorkingDir: string
-	OnBuild: string
-	Labels: {[key: string]: string}
-}
-
-type Container = {
-	AppArmorProfile: string
-	Args: string[]
-	Config: Config
-	Created: Date
-	Driver: string
-	ExecIds: string[]
-	HostConfig: {}
-	HostnamePath: string
-	HostsPath: string
-	LogPath: string
-	Id: string
-	Image: string
-	MountLabel: string
-	Name: string
-	NetworkSettings: NetworkSettings
-	Path: string
-	ProcessLabel: string
-	ResolvConfPath: string
-	RestartCount: number
-	State: State
-	Mounts: Mount[]
-}
-
-type ExecInstance = {
-	Id: string
-}
-
-const serverConfig = {
-	daemonUrl: {
-		name: 'URL',
-		description: 'Daemon Url',
-		default:'http://localhost:8080',
-	},
-} as const
-
-const clientConfig = {
-	linkIndicatorDnsEnvironmentVariable: {
-		name: 'Use DNS in env vars',
-		description: 'Match containers names or network aliases in other containers environment variables to create links',
-		default: false,
-	},
-	cacheTime: {
-		name: 'Data cache',
-		description: 'Time in milliseconds to cache containers and networks data',
-		default: 2000,
-	},
-} as const
-
-export class DockerComposeServer extends ServerModule<typeof serverConfig> {
-	constructor() {
-		super('dockerCompose', serverConfig)
-	}
-
-	handleRequest(params: any[]): any {
-		return 
-	}
-}
-
-export class DockerComposeClient extends ClientModule<typeof clientConfig> implements HostModule<typeof clientConfig>, NetworkModule<typeof clientConfig>, LinkModule<typeof clientConfig> {
+export class DockerComposeClient extends ClientModule<DockerComposeClientConfig> implements HostModule<DockerComposeClientConfig>, NetworkModule<DockerComposeClientConfig>, LinkModule<DockerComposeClientConfig> {
 	project: string = ""
 	containers: Container[] = []
 	networks: DockerNetwork[] = []
@@ -183,7 +18,7 @@ export class DockerComposeClient extends ClientModule<typeof clientConfig> imple
 	networksCacheTimestamp: number = 0
 
 	constructor() {
-		super('dockerCompose', clientConfig)
+		super('dockerCompose', 'Docker Compose', clientConfig)
 	}
 
 	private parseDockerStream(buffer: ArrayBuffer): Uint8Array {

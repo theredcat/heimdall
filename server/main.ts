@@ -1,10 +1,10 @@
 import connect from 'connect'
 import serveStatic from 'serve-static'
 import path from 'node:path'
-import fs from 'node:fs'
+import fs from 'fs/promises'
 import { createServer as createViteServer } from 'vite'
 import vue from '@vitejs/plugin-vue'
-import { fileURLToPath } from 'node:url'
+import { fileURLToPath, pathToFileURL } from 'node:url'
 import http from 'node:http'
 import { WebSocketServer } from 'ws'
 
@@ -19,7 +19,8 @@ const isProd = process.env.NODE_ENV === 'production'
 const port = 1337
 
 const app = connect()
-const wss = new WebSocketServer({ server: http.createServer(app) })
+const httpServer = http.createServer(app)
+const wss = new WebSocketServer({ server: httpServer })
 
 // Middleware de log
 app.use((req, res, next) => {
@@ -44,31 +45,50 @@ if (!isProd) {
 
   app.use(vite.middlewares)
 
-  app.use((req, res) => {
+  app.use(async (req, res) => {
     res.setHeader('Content-Type', 'text/html')
-    fs.createReadStream(path.resolve(__dirname, '../client/index.html')).pipe(res)
+    const html = await fs.readFile(path.resolve(__dirname, '../client/index.html'), 'utf-8')
+    res.end(html)
   })
 } else {
   app.use(serveStatic(path.resolve(__dirname, '../dist')))
 
-  app.use((req, res) => {
+  app.use(async (req, res) => {
     res.setHeader('Content-Type', 'text/html')
-    fs.createReadStream(path.resolve(__dirname, '../dist/index.html')).pipe(res)
+    const html = await fs.readFile(path.resolve(__dirname, '../client/index.html'), 'utf-8')
+    res.end(html)
   })
 }
 
-wss.on('connection', (ws) => {
-  logger.info(`${JSON.stringify(ws)} connected`);
+const DATASOURCE_DIR = path.resolve(__dirname, '../src/datasources')
 
-  ws.on('message', (message) => {
-    logger.info(`Reçu : ${JSON.stringify(message.toString())}`);
+const loadDatasources = async (): Promise<string[]> => {
+  const entries = await fs.readdir(DATASOURCE_DIR, { withFileTypes: true })
+  const clients: string[] = []
 
-    ws.send(`Echo: ${message}`);
-  });
+  for (const entry of entries) {
+    if (!entry.isDirectory()) continue
 
-  ws.send('Bienvenue via WebSocket !');
-});
+    const clientFilePath = path.join(DATASOURCE_DIR, entry.name, 'client.ts')
+    try {
+      await fs.access(clientFilePath)
+      clients.push(entry.name)
+    } catch {
+      logger.error(`Directory module ${entry.name} doesn't have a client.ts. Datasources must have a client.ts`)
+    }
+  }
 
-http.createServer(app).listen(port, () => {
+  return clients
+}
+
+wss.on('connection', async (ws) => {
+  const datasources = await loadDatasources()
+  ws.send(JSON.stringify({
+    type: 'datasource-list',
+    data: datasources
+  }))
+})
+
+httpServer.listen(port, () => {
   logger.info(`🚀 Server started on http://localhost:${port}`)
 })

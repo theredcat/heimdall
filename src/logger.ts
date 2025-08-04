@@ -3,16 +3,16 @@ export class Logger {
 	constructor(name: string) {
 		this.name = name
 	}
-	debug(log: string) {
-		console.debug('debug['+this.name+']: '+log)
+	debug(log: string, data?: any) {
+		console.debug('debug['+this.name+']: '+log, data)
 	}
-	info(log: string) {
-		console.log('info['+this.name+']: '+log)
+	info(log: string, data?: any) {
+		console.log('info['+this.name+']: '+log, data)
 	}
-	warn(log: string) {
-		console.log('warn['+this.name+']: '+log)
+	warn(log: string, data?: any) {
+		console.log('warn['+this.name+']: '+log, data)
 	}
-	error(log: string) {
-		console.error('error['+this.name+']: '+log)
+	error(log: string, data?: any) {
+		console.error('error['+this.name+']: '+log, data)
 	}
 }
