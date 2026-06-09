@@ -269,19 +269,19 @@ export class Infrastructure {
 
 	public update(autoArrangeNodes = false): Promise<boolean> {
 		this.logger.debug('Infrastructure: Updating graph')
-		const modulesReturns: Promise<Host[]|Network[]|Link[]>[] = []
+		const modulesReturns: Promise<void>[] = []
 		for (const module of this.modules) {
 			let hostsPromise: Promise<Host[]>
 			if ('getHosts' in (module as any)) {
 				hostsPromise = (module as HostModule).getHosts()
-				this.updateHosts(hostsPromise)
+				modulesReturns.push(this.updateHosts(hostsPromise))
 			}
 			if ('getNetworks' in (module as any)) {
-				this.updateNetworks((module as NetworkModule).getNetworks())
+				modulesReturns.push(this.updateNetworks((module as NetworkModule).getNetworks()))
 			}
 			if ('getLinks' in (module as any)) {
 				if (hostsPromise) {
-					this.updateLinks((module as LinkModule).getLinks(hostsPromise))
+					modulesReturns.push(this.updateLinks((module as LinkModule).getLinks(hostsPromise)))
 				}
 			}
 		}
