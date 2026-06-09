@@ -304,10 +304,12 @@ export class Infrastructure {
 		const edgesDefinitions: EdgeDefinition[] = []
 		const nameFilter = this.getNameFilter()
 		const visibleHostIds = new Set<string>()
+		const visibleNetworkIds = new Set<string>()
 
 		if (this.getOption('menu-display-networks', 'boolean')) {
 			// Networks
 			for (const network of this.networks.values()) {
+				visibleNetworkIds.add("network-" + network.id)
 				nodesDefinitions.push({
 					data: {
 						id: "network-" + network.id,
@@ -334,6 +336,9 @@ export class Infrastructure {
 			});
 			if (this.getOption('menu-display-networks', 'boolean')) {
 				for (const network of Object.values(host.getNetworks())) {
+					if (!visibleNetworkIds.has("network-" + network.id)) {
+						continue
+					}
 					edgesDefinitions.push({
 						data: {
 							id: "host-" + host.id + " -> network-" + network.id,
