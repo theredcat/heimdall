@@ -43,6 +43,7 @@ export class Infrastructure {
 			elements: [],
 			minZoom: 0.1,
 			maxZoom: 10,
+			wheelSensitivity: 0.2,
 		});
 
 		(this.cy as any).cxtmenu({
