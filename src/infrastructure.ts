@@ -335,6 +335,26 @@ export class Infrastructure {
 		return element ? element.value.trim().toLowerCase() : ''
 	}
 
+	// Maps each status checkbox to the host state it controls
+	static statusFilters: { [id: string]: string } = {
+		'menu-filter-status-healthy': 'running',
+		'menu-filter-status-unhealthy': 'unhealthy',
+		'menu-filter-status-exited': 'stopped'
+	}
+
+	// Returns the set of host states that should be hidden.
+	// Only states backed by a checkbox can be hidden; any other state always shows.
+	public getHiddenStates(): Set<string> {
+		const hidden = new Set<string>()
+		for (const id in Infrastructure.statusFilters) {
+			const element = <HTMLInputElement> document.getElementById(id)
+			if (element && !element.checked) {
+				hidden.add(Infrastructure.statusFilters[id])
+			}
+		}
+		return hidden
+	}
+
 	public getOptions(): { [key: string]: any} {
 		const options: { [key: string]: any} = {}
 		for (const option in Infrastructure.optionsTypes) {
@@ -378,6 +398,7 @@ export class Infrastructure {
 		const nodesDefinitions: NodeDefinition[] = []
 		const edgesDefinitions: EdgeDefinition[] = []
 		const nameFilter = this.getNameFilter()
+		const hiddenStates = this.getHiddenStates()
 		const visibleHostIds = new Set<string>()
 		const visibleNetworkIds = new Set<string>()
 
@@ -398,6 +419,9 @@ export class Infrastructure {
 		// Hosts
 		this.hosts.forEach((host: Host, hostId: string) => {
 			if (nameFilter && !host.name.toLowerCase().includes(nameFilter)) {
+				return
+			}
+			if (hiddenStates.has(host.state)) {
 				return
 			}
 			visibleHostIds.add("host-" + host.id)
