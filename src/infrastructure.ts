@@ -255,6 +255,11 @@ export class Infrastructure {
 		return element.checked
 	}
 
+	public getNameFilter(): string {
+		const element = <HTMLInputElement> document.getElementById('menu-filter-name')
+		return element ? element.value.trim().toLowerCase() : ''
+	}
+
 	public getOptions(): { [key: string]: any} {
 		const options: { [key: string]: any} = {}
 		for (const option in Infrastructure.optionsTypes) {
@@ -297,6 +302,8 @@ export class Infrastructure {
 	private updateView(autoArrangeNodes: Boolean) {
 		const nodesDefinitions: NodeDefinition[] = []
 		const edgesDefinitions: EdgeDefinition[] = []
+		const nameFilter = this.getNameFilter()
+		const visibleHostIds = new Set<string>()
 
 		if (this.getOption('menu-display-networks', 'boolean')) {
 			// Networks
@@ -313,6 +320,10 @@ export class Infrastructure {
 
 		// Hosts
 		this.hosts.forEach((host: Host, hostId: string) => {
+			if (nameFilter && !host.name.toLowerCase().includes(nameFilter)) {
+				return
+			}
+			visibleHostIds.add("host-" + host.id)
 			nodesDefinitions.push({
 				data: {
 					id: "host-" + host.id,
@@ -338,6 +349,9 @@ export class Infrastructure {
 		// Links
 		if (this.getOption('menu-display-apps', 'boolean')) {
 			for (const link of this.links.values()) {
+				if (nameFilter && (!visibleHostIds.has('host-' + link.source.id) || !visibleHostIds.has('host-' + link.target.id))) {
+					continue
+				}
 				edgesDefinitions.push({
 					data: {
 						id: 'host'+link.source.id + " -> host-" + link.target.id,
