@@ -52,13 +52,23 @@ export class Infrastructure {
 			outsideMenuCancel: 10
 		})
 
+		// Highlight the selected node and its direct neighbours, dim the rest
+		this.cy.on('select', 'node', (event) => {
+			const neighbourhood = event.target.closedNeighborhood()
+			this.cy.elements().not(neighbourhood).addClass('dimmed')
+			neighbourhood.removeClass('dimmed').addClass('highlighted')
+		})
+		this.cy.on('unselect', 'node', () => {
+			this.cy.elements().removeClass('dimmed highlighted')
+		})
+
 		this.logger = new Logger(new.target.name);
 	}
 
 	// Fatarrow since that will be called by cytoscape and we need to keep 'this'
 	circularMenuOptions = (node: NodeSingular) => {
 		if (node.isEdge())
-			return []
+			return this.edgeMenuOptions(node)
 
 		const commands: any[] = []
 		commands.push({
@@ -214,6 +224,71 @@ export class Infrastructure {
 		return commands
 	}
 
+	// Context menu for edges (links between containers)
+	edgeMenuOptions = (edge: NodeSingular) => {
+		// Only L7 links (container <-> container) carry a "why" explanation
+		if (edge.data('type') != 'l7link') {
+			return []
+		}
+
+		return [{
+			content: '<span class="fa fa-info"> Link reason</span>',
+			select: (element: NodeSingular) => {
+				const reasons: any[] = element.data('reasons') || []
+				const sourceName = element.data('sourceName')
+				const targetName = element.data('targetName')
+
+				let body: string
+				if (reasons.length == 0) {
+					body = '<p class="uk-text-muted">No detailed reason available for this link.</p>'
+				} else {
+					let cards = ''
+					for (const reason of reasons) {
+						const details: string[] = []
+						if (reason.envKey) {
+							const value = reason.envValue ? `<code class="uk-text-break"> = ${reason.envValue}</code>` : ''
+							details.push(`<dt><span uk-icon="icon: cog; ratio: 0.8"></span> Environment variable</dt><dd><span class="uk-label">${reason.envKey}</span>${value}</dd>`)
+						}
+						if (reason.alias) {
+							details.push(`<dt><span uk-icon="icon: tag; ratio: 0.8"></span> Matched DNS alias</dt><dd><span class="uk-label uk-label-success">${reason.alias}</span></dd>`)
+						}
+						if (reason.network) {
+							details.push(`<dt><span uk-icon="icon: cloud-download; ratio: 0.8"></span> Through network</dt><dd><span class="uk-label uk-label-warning">${reason.network}</span></dd>`)
+						}
+						cards += `
+							<div class="uk-card uk-card-default uk-card-small uk-card-body uk-margin-small-bottom">
+								<p class="uk-margin-small-bottom">${reason.description}</p>
+								<dl class="uk-description-list">${details.join('')}</dl>
+							</div>`
+					}
+					body = cards
+				}
+
+				const element$ = UIkitUtil.$(
+					`<div class="uk-modal link-reason-modal">
+						<div class="uk-modal-dialog">
+							<button class="uk-modal-close-default" type="button" uk-close></button>
+							<div class="uk-modal-header">
+								<h2 class="uk-modal-title">
+									<span uk-icon="icon: link"></span>
+									${sourceName} &rarr; ${targetName}
+								</h2>
+							</div>
+							<div class="uk-modal-body" uk-overflow-auto>
+								${body}
+							</div>
+							<div class="uk-modal-footer uk-text-right">
+								<button class="uk-button uk-button-primary uk-modal-close" type="button">Close</button>
+							</div>
+						</div>
+					</div>`
+				)
+				const dialog: any = UIkit.modal(element$)
+				dialog.show()
+			}
+		}]
+	}
+
 	private getWideDialog(htmlString: string): { dialog: UIkit.UIkitModalElement; content: HTMLElement } {
 		const element = UIkitUtil.$(
 			`<div class="uk-modal">
@@ -260,6 +335,26 @@ export class Infrastructure {
 		return element ? element.value.trim().toLowerCase() : ''
 	}
 
+	// Maps each status checkbox to the host state it controls
+	static statusFilters: { [id: string]: string } = {
+		'menu-filter-status-healthy': 'running',
+		'menu-filter-status-unhealthy': 'unhealthy',
+		'menu-filter-status-exited': 'stopped'
+	}
+
+	// Returns the set of host states that should be hidden.
+	// Only states backed by a checkbox can be hidden; any other state always shows.
+	public getHiddenStates(): Set<string> {
+		const hidden = new Set<string>()
+		for (const id in Infrastructure.statusFilters) {
+			const element = <HTMLInputElement> document.getElementById(id)
+			if (element && !element.checked) {
+				hidden.add(Infrastructure.statusFilters[id])
+			}
+		}
+		return hidden
+	}
+
 	public getOptions(): { [key: string]: any} {
 		const options: { [key: string]: any} = {}
 		for (const option in Infrastructure.optionsTypes) {
@@ -303,11 +398,14 @@ export class Infrastructure {
 		const nodesDefinitions: NodeDefinition[] = []
 		const edgesDefinitions: EdgeDefinition[] = []
 		const nameFilter = this.getNameFilter()
+		const hiddenStates = this.getHiddenStates()
 		const visibleHostIds = new Set<string>()
+		const visibleNetworkIds = new Set<string>()
 
 		if (this.getOption('menu-display-networks', 'boolean')) {
 			// Networks
 			for (const network of this.networks.values()) {
+				visibleNetworkIds.add("network-" + network.id)
 				nodesDefinitions.push({
 					data: {
 						id: "network-" + network.id,
@@ -323,6 +421,9 @@ export class Infrastructure {
 			if (nameFilter && !host.name.toLowerCase().includes(nameFilter)) {
 				return
 			}
+			if (hiddenStates.has(host.state)) {
+				return
+			}
 			visibleHostIds.add("host-" + host.id)
 			nodesDefinitions.push({
 				data: {
@@ -334,6 +435,9 @@ export class Infrastructure {
 			});
 			if (this.getOption('menu-display-networks', 'boolean')) {
 				for (const network of Object.values(host.getNetworks())) {
+					if (!visibleNetworkIds.has("network-" + network.id)) {
+						continue
+					}
 					edgesDefinitions.push({
 						data: {
 							id: "host-" + host.id + " -> network-" + network.id,
@@ -357,7 +461,10 @@ export class Infrastructure {
 						id: 'host'+link.source.id + " -> host-" + link.target.id,
 						source: 'host-'+link.source.id,
 						target: 'host-'+link.target.id,
-						type: 'l7link'
+						type: 'l7link',
+						sourceName: link.source.name,
+						targetName: link.target.name,
+						reasons: link.reasons || []
 					}
 				})
 			}
