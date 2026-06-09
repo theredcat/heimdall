@@ -68,7 +68,7 @@ export class Infrastructure {
 	// Fatarrow since that will be called by cytoscape and we need to keep 'this'
 	circularMenuOptions = (node: NodeSingular) => {
 		if (node.isEdge())
-			return []
+			return this.edgeMenuOptions(node)
 
 		const commands: any[] = []
 		commands.push({
@@ -224,6 +224,71 @@ export class Infrastructure {
 		return commands
 	}
 
+	// Context menu for edges (links between containers)
+	edgeMenuOptions = (edge: NodeSingular) => {
+		// Only L7 links (container <-> container) carry a "why" explanation
+		if (edge.data('type') != 'l7link') {
+			return []
+		}
+
+		return [{
+			content: '<span class="fa fa-info"> Link reason</span>',
+			select: (element: NodeSingular) => {
+				const reasons: any[] = element.data('reasons') || []
+				const sourceName = element.data('sourceName')
+				const targetName = element.data('targetName')
+
+				let body: string
+				if (reasons.length == 0) {
+					body = '<p class="uk-text-muted">No detailed reason available for this link.</p>'
+				} else {
+					let cards = ''
+					for (const reason of reasons) {
+						const details: string[] = []
+						if (reason.envKey) {
+							const value = reason.envValue ? `<code class="uk-text-break"> = ${reason.envValue}</code>` : ''
+							details.push(`<dt><span uk-icon="icon: cog; ratio: 0.8"></span> Environment variable</dt><dd><span class="uk-label">${reason.envKey}</span>${value}</dd>`)
+						}
+						if (reason.alias) {
+							details.push(`<dt><span uk-icon="icon: tag; ratio: 0.8"></span> Matched DNS alias</dt><dd><span class="uk-label uk-label-success">${reason.alias}</span></dd>`)
+						}
+						if (reason.network) {
+							details.push(`<dt><span uk-icon="icon: cloud-download; ratio: 0.8"></span> Through network</dt><dd><span class="uk-label uk-label-warning">${reason.network}</span></dd>`)
+						}
+						cards += `
+							<div class="uk-card uk-card-default uk-card-small uk-card-body uk-margin-small-bottom">
+								<p class="uk-margin-small-bottom">${reason.description}</p>
+								<dl class="uk-description-list">${details.join('')}</dl>
+							</div>`
+					}
+					body = cards
+				}
+
+				const element$ = UIkitUtil.$(
+					`<div class="uk-modal link-reason-modal">
+						<div class="uk-modal-dialog">
+							<button class="uk-modal-close-default" type="button" uk-close></button>
+							<div class="uk-modal-header">
+								<h2 class="uk-modal-title">
+									<span uk-icon="icon: link"></span>
+									${sourceName} &rarr; ${targetName}
+								</h2>
+							</div>
+							<div class="uk-modal-body" uk-overflow-auto>
+								${body}
+							</div>
+							<div class="uk-modal-footer uk-text-right">
+								<button class="uk-button uk-button-primary uk-modal-close" type="button">Close</button>
+							</div>
+						</div>
+					</div>`
+				)
+				const dialog: any = UIkit.modal(element$)
+				dialog.show()
+			}
+		}]
+	}
+
 	private getWideDialog(htmlString: string): { dialog: UIkit.UIkitModalElement; content: HTMLElement } {
 		const element = UIkitUtil.$(
 			`<div class="uk-modal">
@@ -372,7 +437,10 @@ export class Infrastructure {
 						id: 'host'+link.source.id + " -> host-" + link.target.id,
 						source: 'host-'+link.source.id,
 						target: 'host-'+link.target.id,
-						type: 'l7link'
+						type: 'l7link',
+						sourceName: link.source.name,
+						targetName: link.target.name,
+						reasons: link.reasons || []
 					}
 				})
 			}

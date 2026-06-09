@@ -1,7 +1,7 @@
 import { split } from 'shlex'
 import { Terminal, IDisposable, ITerminalAddon } from '@xterm/xterm';
 import { Host, HostActionStatus, HostModule, HostState, LogLine, LogStreamType } from '../host'
-import { Link, LinkModule } from '../link'
+import { Link, LinkModule, LinkReason } from '../link'
 import { Network, NetworkModule } from '../network'
 import { Module } from './index'
 import { AttachAddon } from '@xterm/addon-attach'
@@ -413,7 +413,7 @@ export class DockerCompose extends Module implements HostModule, NetworkModule, 
 
 	getLinks(): Promise<Link[]> {
 		return this.getContainers().then((containersResponse) => {
-			let links: Link[] = []
+			let links: { [key: string]: Link } = {}
 			let dnsContainers: { [key: string]: [Network, Host] } = {}
 			for (let container of containersResponse) {
 				for (let networkName in container.NetworkSettings.Networks) {
@@ -422,7 +422,7 @@ export class DockerCompose extends Module implements HostModule, NetworkModule, 
 						for(let alias of network.Aliases) {
 							let networkLink: Network = null
 							if (network.NetworkID) {
-								const networkLink = new Network(network.NetworkID, networkName, network)
+								networkLink = new Network(network.NetworkID, networkName, network)
 							}
 							dnsContainers[alias] = [
 								networkLink,
@@ -435,24 +435,41 @@ export class DockerCompose extends Module implements HostModule, NetworkModule, 
 			for (let container of containersResponse) {
 				if(this.linkIndicatorDnsEnvironmentVariable) {
 					for (let envKeyValue of container.Config.Env) {
-						let envValue = envKeyValue.match('^[^=]+=(.*)$')
+						let envValue = envKeyValue.match('^([^=]+)=(.*)$')
 						if (!envValue)
 							continue
 
+						const envKey = envValue[1]
 						for(let dnsContainer in dnsContainers) {
-							if(envValue[1].match(dnsContainer)){
+							if(envValue[2].match(dnsContainer)){
 								const source = this.getHostFromContainer(container)
 								const target = dnsContainers[dnsContainer][1]
 								const via = dnsContainers[dnsContainer][0]
 								this.logger.debug(`Adding link from Container{Id=${source.id}} to Container{Id=${target.id}} because source container environment variable contains a reference to one of the target container DNS alias (${dnsContainer})`)
-								links.push({source, target, via: [via]})
+								const reason: LinkReason = {
+									type: 'env',
+									description: `Environment variable ${envKey} of ${source.name} references the DNS alias "${dnsContainer}" of ${target.name}`,
+									envKey: envKey,
+									envValue: envValue[2],
+									alias: dnsContainer,
+									network: via ? via.name : undefined,
+								}
+								const linkKey = source.id + ':' + target.id
+								if (links[linkKey]) {
+									links[linkKey].reasons.push(reason)
+									if (via) {
+										links[linkKey].via.push(via)
+									}
+								} else {
+									links[linkKey] = {source, target, via: via ? [via] : [], reasons: [reason]}
+								}
 							}
 						}
 
 					}
 				}
 			}
-			return links
+			return Object.values(links)
 		})
 	}
 }
