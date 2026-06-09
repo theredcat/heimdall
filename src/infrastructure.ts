@@ -52,6 +52,16 @@ export class Infrastructure {
 			outsideMenuCancel: 10
 		})
 
+		// Highlight the selected node and its direct neighbours, dim the rest
+		this.cy.on('select', 'node', (event) => {
+			const neighbourhood = event.target.closedNeighborhood()
+			this.cy.elements().not(neighbourhood).addClass('dimmed')
+			neighbourhood.removeClass('dimmed').addClass('highlighted')
+		})
+		this.cy.on('unselect', 'node', () => {
+			this.cy.elements().removeClass('dimmed highlighted')
+		})
+
 		this.logger = new Logger(new.target.name);
 	}
 
