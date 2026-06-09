@@ -45,3 +45,8 @@ Array.from(booleanOptions).forEach(item => {
 document.getElementById('action-rearrange-nodes').onclick = () => {
 	graph.update(true)
 }
+
+const nameFilter = <HTMLInputElement> document.getElementById('menu-filter-name')
+nameFilter.oninput = async () => {
+	await graph.update(true)
+}

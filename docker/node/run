@@ -7,6 +7,10 @@ whoami
 ls -alh /srv
 echo "Container is starting..." 1>&2
 
+echo "[TaskStart][Init] Make config" 1>&2
+make config
+echo "[TaskEnd][Init] Make config" 1>&2
+
 if ! [ "$DISABLE_NPM_CI" = "true" ]
 then
   echo "[TaskStart][Init] Npm ci" 1>&2
@@ -15,10 +19,6 @@ then
 else
   echo "[TaskSkip][Init] Npm ci" 1>&2
 fi
-
-echo "[TaskStart][Init] Make build" 1>&2
-make config
-echo "[TaskEnd][Init] Make build" 1>&2
 
 # Start app
 echo "[Service][Start] Starting server" 1>&2
