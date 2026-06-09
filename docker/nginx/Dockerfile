@@ -1,7 +1,7 @@
-FROM nginx:1.21.3 AS base
+FROM nginx:1.27-bookworm AS base
 HEALTHCHECK --interval=5s --timeout=20s --retries=1 CMD bash -c 'curl --fail localhost/docker/_ping'
 WORKDIR /srv/heimdall/current
-RUN apt-get update && apt-get install make && rm -rf /var/lib/apt/lists/*
+RUN apt-get update && apt-get install --no-install-recommends -y make bash curl gettext-base && rm -rf /var/lib/apt/lists/*
 
 FROM heimdall-node:latest AS release-build
 COPY --chown=app:app ./ /tmp/build
