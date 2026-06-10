@@ -23,8 +23,10 @@ pre-symlink:
 post-symlink:
 
 release:
-	export USER_UID=$(id -u) && \
-	export USER_GID=$(id -g) && \
-	docker-compose -f docker-compose.yml -f docker-compose.release.yml build heimdall-proxy && \
+	export USER_UID=$$(id -u) && \
+	export USER_GID=$$(id -g) && \
+	export BUILDX_BUILDER=default && \
+	docker compose -f docker-compose.yml -f docker-compose.release.yml build heimdall-node && \
+	docker compose -f docker-compose.yml -f docker-compose.release.yml build heimdall-proxy && \
 	[ y = "$$(echo "Publish (y to confirm) ? :" 1>&2; read confirm; echo -n $$confirm)" ] && \
-	docker-compose -f docker-compose.yml -f docker-compose.release.yml push heimdall-proxy
+	docker compose -f docker-compose.yml -f docker-compose.release.yml push heimdall-proxy
