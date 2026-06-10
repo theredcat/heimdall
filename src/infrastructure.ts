@@ -453,12 +453,12 @@ export class Infrastructure {
 		// Links
 		if (this.getOption('menu-display-apps', 'boolean')) {
 			for (const link of this.links.values()) {
-				if (nameFilter && (!visibleHostIds.has('host-' + link.source.id) || !visibleHostIds.has('host-' + link.target.id))) {
+				if (!visibleHostIds.has('host-' + link.source.id) || !visibleHostIds.has('host-' + link.target.id)) {
 					continue
 				}
 				edgesDefinitions.push({
 					data: {
-						id: 'host'+link.source.id + " -> host-" + link.target.id,
+						id: 'host-'+link.source.id + " -> host-" + link.target.id,
 						source: 'host-'+link.source.id,
 						target: 'host-'+link.target.id,
 						type: 'l7link',
