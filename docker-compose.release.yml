@@ -6,3 +6,5 @@ services:
     volumes: []
     build:
       target: release
+    environment:
+      DOCKER_API_URL: "/docker/"

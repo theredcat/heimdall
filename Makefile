@@ -14,9 +14,12 @@ build: install
 
 config:
 ifeq ($(APP_MODE),dev)
-	envsubst < ./config.json.tpl > ./config.json
-else
+	# Dev: served statically by webpack-dev-server from ./dist
+	mkdir -p ./dist
 	envsubst < ./config.json.tpl > ./dist/config.json
+else
+	# Release: nginx serves the (flattened) build dir as web root
+	envsubst < ./config.json.tpl > ./config.json
 endif
 
 pre-symlink:

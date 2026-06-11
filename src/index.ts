@@ -29,7 +29,7 @@ window.onblur = () => {
 
 window.addEventListener('DOMContentLoaded', async function() {
 	const dockerApiUrl = await config.get('docker_api_url')
-	let compose = new DockerCompose(new URL(dockerApiUrl), '', true)
+	let compose = new DockerCompose(new URL(dockerApiUrl, document.URL), '', true)
 	graph = new Infrastructure(document.getElementById('cy'), style)
 	graph.addDataSource(compose)
 	await graph.update(true)

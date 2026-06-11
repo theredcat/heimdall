@@ -347,10 +347,10 @@ export class DockerCompose extends Module implements HostModule, NetworkModule, 
 	}
 
 	getHostTerminal(id: string): Promise<Terminal> {
-		const domain = this.httpClient.baseUrl.hostname
+		const host = this.httpClient.baseUrl.host
 		const pathname = this.httpClient.baseUrl.pathname
 		const protocol = this.httpClient.baseUrl.protocol.replace('http','ws')
-		const url = `${protocol}//${domain}${pathname}containers/${id}/attach/ws?logs=0&stream=1&stdin=1&stdout=1&stderr=1`
+		const url = `${protocol}//${host}${pathname}containers/${id}/attach/ws?logs=0&stream=1&stdin=1&stdout=1&stderr=1`
 		const socket = new WebSocket(url)
 		const term = new Terminal({convertEol: true})
 		const attachAddon = new AttachAddon(socket)
@@ -359,11 +359,10 @@ export class DockerCompose extends Module implements HostModule, NetworkModule, 
 	}
 
 	getHostLogs(id: string, tailAfter?: Date): Promise<Terminal | LogLine[]> {
-		const domain = this.httpClient.baseUrl.hostname
-		const port = `:${this.httpClient.baseUrl.port}`
+		const host = this.httpClient.baseUrl.host
 		const pathname = this.httpClient.baseUrl.pathname
 		const protocol = this.httpClient.baseUrl.protocol.replace('http','ws')
-		const url = `${protocol}//${domain}${port}${pathname}containers/${id}/attach/ws?logs=1&stream=1&stdin=0&stdout=1&stderr=1`
+		const url = `${protocol}//${host}${pathname}containers/${id}/attach/ws?logs=1&stream=1&stdin=0&stdout=1&stderr=1`
 		this.logger.debug(`Connecting to docker logs websocket : ${url}`)
 		const socket = new WebSocket(url)
 		const term = new Terminal({convertEol: true})

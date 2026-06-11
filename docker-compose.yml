@@ -30,7 +30,9 @@ services:
       APP_MODE: dev
       APP_DOMAIN: localhost
       APP_PORT: ${HEIMDALL_NGINX_PORT:-80}
-      DOCKER_API_URL: "http://localhost:${HEIMDALL_NGINX_PORT:-80}/docker/"
+      # Relative to the page origin: nginx proxies /docker/ to the daemon,
+      # so this is port-/host-agnostic regardless of HEIMDALL_NGINX_PORT.
+      DOCKER_API_URL: "/docker/"
 
   heimdall-test-healthy:
     container_name: heimdall-test-healthy
