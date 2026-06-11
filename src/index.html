@@ -8,6 +8,19 @@
 		<meta name="viewport" content="width=device-width, user-scalable=no, initial-scale=1, maximum-scale=1">
 		<link href="https://unpkg.com/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet" type="text/css" />
 
+		<script>
+			// Apply the saved theme before paint to avoid a flash of the wrong
+			// theme. The full UIKit dark stylesheet is swapped in by the bundle
+			// (index.ts); the inline rules below cover the page until then.
+			(function () {
+				try {
+					if (localStorage.getItem('theme') === 'dark') {
+						document.documentElement.classList.add('dark-mode')
+					}
+				} catch (e) { /* localStorage unavailable */ }
+			})()
+		</script>
+
 		<style>
 			body {
 				font-family: helvetica;
@@ -17,6 +30,13 @@
 
 			.cxtmenu-disabled {
 				opacity: 0.333;
+			}
+
+			#theme-toggle {
+				margin-right: 20px;
+			}
+			#theme-toggle .fa {
+				font-size: 20px;
 			}
 
 			.uk-modal > .wideDialog {
@@ -57,6 +77,16 @@
 			.boolean { color: blue; }
 			.null { color: magenta; }
 			.key { color: red; }
+
+			/* Anti-flash: dark page background before the UIKit dark stylesheet loads */
+			html.dark-mode,
+			html.dark-mode body {
+				background-color: #1e1e1e;
+				color: #c9c9c9;
+			}
+			html.dark-mode #cy {
+				background-color: #161616;
+			}
 		</style>
 	</head>
 
@@ -88,6 +118,15 @@
 								<li><label style="margin: 20px"> <input id="menu-display-apps" checked="1" type="checkbox" class="uk-checkbox option-boolean"> <span style="margin: 5px">Application</span> </label></li>
 							</ul>
 						</div>
+					</li>
+				</ul>
+			</div>
+			<div class="uk-navbar-right">
+				<ul class="uk-navbar-nav">
+					<li>
+						<a href="#" id="theme-toggle" title="Toggle dark mode">
+							<span class="fa fa-moon-o"></span>
+						</a>
 					</li>
 				</ul>
 			</div>

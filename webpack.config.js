@@ -14,10 +14,38 @@ module.exports = module.exports = (env, options) => {
 					exclude: /node_modules/
 				},
 				{
+					// Eager stylesheets (injected on load). The `?lazy` ones are
+					// handled by the rule below so the dark theme can be toggled.
 					test: /\.(less|css)$/i,
+					resourceQuery: { not: [/lazy/] },
 					use: [
 						{
 							loader: "style-loader",
+						},
+						{
+							loader: "css-loader",
+						},
+						{
+							loader: "less-loader",
+							options: {
+								lessOptions: {
+									paths: [path.resolve(__dirname, "node_modules")],
+								}
+							}
+						}
+					]
+				},
+				{
+					// Lazy stylesheets: the imported module exposes .use()/.unuse()
+					// so we can toggle the dark theme at runtime (see index.ts).
+					test: /\.(less|css)$/i,
+					resourceQuery: /lazy/,
+					use: [
+						{
+							loader: "style-loader",
+							options: {
+								injectType: "lazyStyleTag",
+							},
 						},
 						{
 							loader: "css-loader",

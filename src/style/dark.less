@@ -1,0 +1,43 @@
+// Dark theme.
+//
+// This recompiles the whole UIKit theme with a dark global palette and is
+// emitted as a *lazy* stylesheet (see webpack.config.js / index.ts): it is
+// injected after the light theme only when dark mode is enabled, and removed
+// when it is turned off. Because every UIKit surface (modal, card, input,
+// button, dropdown) derives from a handful of global variables, overriding
+// those is enough to theme the entire UI.
+@import "uikit/src/less/uikit.theme.less";
+
+// Navbar stays dark in both themes (mirrors index.less)
+@navbar-background: black;
+
+// Global palette -> dark. UIKit's component backgrounds/colors all derive
+// from these, so overriding them themes modals, cards, inputs, buttons and
+// dropdowns at once.
+@global-background:        #1e1e1e;
+@global-muted-background:  #2a2a2a;
+@global-color:             #c9c9c9;
+@global-emphasis-color:    #ffffff;
+@global-muted-color:       #8a8a8a;
+@global-border:            #3a3a3a;
+
+// Page + graph surfaces (not UIKit components)
+body {
+	background-color: @global-background;
+	color: @global-color;
+}
+#cy {
+	background-color: #161616;
+}
+
+// Custom log / JSON-highlight classes need dark-readable colors
+.codeblock,
+.lineprefix      { color: #d4d4d4; }
+.log-line-stdout { color: #d4d4d4; }
+.log-line-stdin  { color: #4ec9b0; }
+.log-line-stderr { color: #f48771; }
+.string  { color: #6a9955; }
+.number  { color: #d7ba7d; }
+.boolean { color: #569cd6; }
+.null    { color: #c586c0; }
+.key     { color: #9cdcfe; }
