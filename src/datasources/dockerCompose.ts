@@ -1,6 +1,5 @@
-import { split } from 'shlex'
 import { Terminal, IDisposable, ITerminalAddon } from '@xterm/xterm';
-import { Host, HostActionStatus, HostModule, HostState, LogLine, LogStreamType } from '../host'
+import { Host, HostActionStatus, HostModule, HostState, LogLine, LogStreamType, ExecTerminal } from '../host'
 import { Link, LinkModule, LinkReason } from '../link'
 import { Network, NetworkModule } from '../network'
 import { Module } from './index'
@@ -168,36 +167,6 @@ export class DockerCompose extends Module implements HostModule, NetworkModule, 
 			this.linkIndicatorDnsEnvironmentVariable = true;
 	}
 
-	private parseDockerStream(buffer: ArrayBuffer): Uint8Array {
-		let bufferPointer = 0
-		let output = new Uint8Array()
-		const dv = new DataView(buffer)
-		while(bufferPointer < buffer.byteLength) {
-			// Docker stream protocol decoder
-			// First byte is stream type
-			const streamId = dv.getUint8(bufferPointer)
-			let streamType: LogStreamType
-			switch(streamId){
-				case 0: streamType = <LogStreamType>'stdin'; break
-				case 1: streamType = <LogStreamType>'stdout'; break
-				case 2: streamType = <LogStreamType>'stderr'; break
-				default: throw Error(`Error while parsing docker log line. Stream id should be 0, 1 or 2 but got ${streamId}`)
-			}
-			bufferPointer++;
-			// Bytes 2 3 and 4 are always zero
-			bufferPointer += 3;
-			// Bytes 5 6 7 and 8 are a 32 bits unsigned int with the packet length
-			const packetLength = dv.getUint32(bufferPointer)
-			bufferPointer += 4;
-			const packetBuffer = new Uint8Array(dv.buffer, bufferPointer, packetLength)
-			const newOutput = new Uint8Array(output.length + packetBuffer.length )
-			newOutput.set(output)
-			newOutput.set(packetBuffer, output.length)
-			output = newOutput
-			bufferPointer += packetLength
-		}
-		return output
-	}
 	getHostFromContainer(container: Container): Host {
 		let hostStatus: HostState
 
@@ -371,32 +340,41 @@ export class DockerCompose extends Module implements HostModule, NetworkModule, 
 		return new Promise<Terminal>((resolve,reject) => resolve(term))
 	}
 
-	executeCommand(id: string, command: string): Promise<Terminal | LogLine[]> {
-		return this.httpClient
-			.post<ExecInstance>(
-				`/containers/${id}/exec`,
-				{
-					AttachStdin: false,
-					AttachStdout: true,
-					AttachStderr: true,
-					Tty: false,
-					Cmd: split(command),
-				}
-			)
-			.then((execInstance) => {
-				return this.httpClient
-					.post<ArrayBuffer>(
-						`/exec/${execInstance.Id}/start`,
-						'{}',
-						'arraybuffer'
-					).then((data) => {
-						console.log(typeof data)
-						const term = new Terminal({convertEol: true})
-						const parsedData = this.parseDockerStream(data)
-						term.write(parsedData)
-						return new Promise<Terminal>((resolve,reject) => resolve(term))
-					})
-			})
+	// Interactive `docker exec -it` via the server-side WS bridge at /terminal.
+	// The bridge (not under /docker/) translates the WebSocket to Docker's exec
+	// hijack, so we wire xterm manually: stdin as binary frames, resize as JSON
+	// text frames, and raw PTY bytes straight back into the terminal.
+	getHostExecTerminal(id: string, command: string = '/bin/sh'): Promise<ExecTerminal> {
+		const loc = window.location
+		const protocol = loc.protocol === 'https:' ? 'wss:' : 'ws:'
+		const url = `${protocol}//${loc.host}/terminal?id=${encodeURIComponent(id)}&cmd=${encodeURIComponent(command)}&tty=1`
+		const socket = new WebSocket(url)
+		socket.binaryType = 'arraybuffer'
+		const term = new Terminal({ convertEol: false })
+		const encoder = new TextEncoder()
+
+		socket.onmessage = (ev) => {
+			if (typeof ev.data === 'string') {
+				term.write(ev.data)
+			} else {
+				term.write(new Uint8Array(ev.data as ArrayBuffer))
+			}
+		}
+		socket.onopen = () => {
+			// Size the PTY to the terminal as soon as the connection is up.
+			socket.send(JSON.stringify({ type: 'resize', cols: term.cols, rows: term.rows }))
+		}
+		socket.onclose = () => {
+			try { term.write('\r\n\x1b[90m[session closed]\x1b[0m\r\n') } catch (e) { /* disposed */ }
+		}
+		term.onData((data) => {
+			if (socket.readyState === WebSocket.OPEN) socket.send(encoder.encode(data))
+		})
+		term.onResize(({ cols, rows }) => {
+			if (socket.readyState === WebSocket.OPEN) socket.send(JSON.stringify({ type: 'resize', cols, rows }))
+		})
+
+		return new Promise<ExecTerminal>((resolve) => resolve({ term, socket }))
 	}
 
 	// Networks

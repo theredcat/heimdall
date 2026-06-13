@@ -25,6 +25,9 @@ export class Infrastructure {
 	links: Map<string, Link> = new Map()
 	modules: Module[] = []
 	logger: Logger
+	// Live interactive exec sessions, kept alive across dialog open/close so the
+	// same terminal can be reattached instead of spawning a new one. Keyed by host id.
+	terminalSessions: Map<string, { term: Terminal; socket: WebSocket; fitAddon?: FitAddon; opened: boolean }> = new Map()
 
 	static optionsTypes: { [key: string]: string } = {
 		'menu-display-apps': 'boolean',
@@ -168,17 +171,22 @@ export class Infrastructure {
 				}
 			})
 			commands.push({
-				content: '<span class="fa fa-terminal"> Execute</span>',
+				content: '<span class="fa fa-terminal"> Shell</span>',
 				select: (element: NodeSingular) => {
-					UIkit.modal.prompt('Command to execute :', '/bin/bash').then((command) => {
-						if(command.length > 0) {
-							UIkit.modal.dialog('<div class="uk-padding"><span class="uk-text-lead">Running <div uk-spinner></div></span></div>')
-							this.hosts.get(node.id().slice(5)).executeCommand(command).then((execData) => {
-								if (execData instanceof Terminal) {
-									this.showTerminalInDialog(execData)
-								} else {
-									UIkit.modal.alert('This host provider doensn\'t support the execute action')
-								}
+					const hostId = node.id().slice(5)
+					// Reattach to a still-running session instead of spawning a new shell.
+					const existing = this.terminalSessions.get(hostId)
+					if (existing && existing.socket.readyState === WebSocket.OPEN) {
+						this.openTerminalDialog(hostId)
+						return
+					}
+					UIkit.modal.prompt('Shell command :', '/bin/sh').then((command) => {
+						if (command && command.length > 0) {
+							this.hosts.get(hostId).getExecTerminal(command).then(({ term, socket }) => {
+								this.terminalSessions.set(hostId, { term, socket, opened: false })
+								// Clear the session (and the node badge) once the shell really ends.
+								socket.addEventListener('close', () => this.terminalSessions.delete(hostId))
+								this.openTerminalDialog(hostId)
 							})
 						}
 					})
@@ -318,6 +326,37 @@ export class Infrastructure {
 		})
 	}
 
+	// Show (or re-show) a persistent interactive exec session. Closing the dialog
+	// does NOT dispose the terminal or close the socket: the session keeps running
+	// and is reattached on the next open (its scrollback is preserved). The session
+	// only ends when the shell exits (socket close) or the tab is closed.
+	private openTerminalDialog(hostId: string) {
+		const session = this.terminalSessions.get(hostId)
+		if (!session) {
+			return
+		}
+		const dialog = this.getWideDialog('<div class="terminal"></div>')
+		if (!session.fitAddon) {
+			session.fitAddon = new FitAddon()
+			session.term.loadAddon(session.fitAddon)
+		}
+		const fitAddon = session.fitAddon
+		new ResizeObserver(() => { try { fitAddon.fit() } catch (e) { /* not attached */ } }).observe(dialog.content)
+		UIkitUtil.on(dialog.content, 'shown', () => {
+			const terminalDiv = dialog.content.getElementsByClassName('terminal')[0] as HTMLElement
+			if (!session.opened) {
+				session.term.open(terminalDiv)
+				session.opened = true
+			} else if (session.term.element) {
+				// Move the already-rendered terminal (with its buffer) into the new dialog.
+				terminalDiv.appendChild(session.term.element)
+			}
+			fitAddon.fit()
+			session.term.focus()
+		})
+		dialog.dialog.show()
+	}
+
 	public getOption(option: string, optionType: string): any {
 		if (! (option in Infrastructure.optionsTypes) ) {
 			throw new Error(`Option ${option} doesn't exists`)
@@ -425,10 +464,14 @@ export class Infrastructure {
 				return
 			}
 			visibleHostIds.add("host-" + host.id)
+			const hasTerminal = this.terminalSessions.has(host.id)
 			nodesDefinitions.push({
 				data: {
 					id: "host-" + host.id,
 					name: host.name,
+					// "#!" shebang marker shown inside the node while a shell is open.
+					label: (hasTerminal ? '#! ' : '') + host.name,
+					hasTerminal: hasTerminal,
 					state: host.state,
 					type: "host"
 				}

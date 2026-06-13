@@ -24,6 +24,13 @@ export type LogLine = {
 	data: string
 }
 
+// An interactive exec session: the xterm terminal plus its underlying socket,
+// kept together so the UI can reuse a still-open session.
+export interface ExecTerminal {
+	term: Terminal
+	socket: WebSocket
+}
+
 export class Host {
 	id: string
 	name: string
@@ -57,8 +64,8 @@ export class Host {
 	getLogs(): Promise<LogLine[] | Terminal> {
 		return this.provider.getHostLogs(this.id)
 	}
-	executeCommand(command: string): Promise<LogLine[] | Terminal> {
-		return this.provider.executeCommand(this.id, command)
+	getExecTerminal(command: string): Promise<ExecTerminal> {
+		return this.provider.getHostExecTerminal(this.id, command)
 	}
 	getTerminal(): Promise<Terminal> {
 		return this.provider.getHostTerminal(this.id)
@@ -84,5 +91,5 @@ export interface HostModule extends Module {
 	deleteHost(id: string): Promise<HostActionStatus>
 	getHostLogs(id: string, tailAfter?: Date): Promise<Terminal | LogLine[]>
 	getHostTerminal(id: string): Promise<Terminal>
-	executeCommand(id: string, command: string): Promise<Terminal | LogLine[]>
+	getHostExecTerminal(id: string, command: string): Promise<ExecTerminal>
 }
