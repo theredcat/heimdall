@@ -1,25 +1,19 @@
 #!/bin/bash
-
 set -e
-ls -alh
-pwd -P
-whoami
-ls -alh /srv
-echo "Container is starting..." 1>&2
 
-echo "[TaskStart][Init] Make config" 1>&2
-make config
-echo "[TaskEnd][Init] Make config" 1>&2
+echo "Container is starting..." 1>&2
 
 if ! [ "$DISABLE_NPM_CI" = "true" ]
 then
-  echo "[TaskStart][Init] Npm ci" 1>&2
-  make build
-  echo "[TaskEnd][Init] Npm ci" 1>&2
+  echo "[TaskStart][Init] npm ci" 1>&2
+  npm ci
+  echo "[TaskEnd][Init] npm ci" 1>&2
 else
-  echo "[TaskSkip][Init] Npm ci" 1>&2
+  echo "[TaskSkip][Init] npm ci" 1>&2
 fi
 
-# Start app
-echo "[Service][Start] Starting server" 1>&2
-npm run dev
+# Start the single Node server (serves the front via HMR + proxies the Docker
+# API + hosts the exec bridge). Config is served dynamically from env, so there
+# is no more `make config` step.
+echo "[Service][Start] Starting heimdall server (dev)" 1>&2
+exec npm run dev
