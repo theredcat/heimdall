@@ -10,6 +10,7 @@
 
 // Navbar stays dark in both themes (mirrors index.less)
 @navbar-background: black;
+@navbar-dropdown-padding: 12px;
 
 // Global palette -> dark. UIKit's component backgrounds/colors all derive
 // from these, so overriding them themes modals, cards, inputs, buttons and
@@ -20,6 +21,11 @@
 @global-emphasis-color:    #ffffff;
 @global-muted-color:       #8a8a8a;
 @global-border:            #3a3a3a;
+
+// Unchecked checkboxes/radios are just a filled square; the default
+// (darken(@global-muted-background)) is nearly the dropdown background, so
+// bump it to a clearly visible grey.
+@form-radio-background:     #4a4a4a;
 
 // Page + graph surfaces (not UIKit components)
 body {
