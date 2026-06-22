@@ -98,29 +98,37 @@
 						<a href="#">Heimdall</a>
 					</li>
 					<li>
-						<a href="#">Search</a>
+						<a href="#" data-i18n="menu.filter">Filters</a>
 						<div class="uk-navbar-dropdown">
 							<ul class="uk-nav uk-navbar-dropdown-nav">
-								<li><input id="menu-filter-name" type="search" class="uk-input uk-form-small" placeholder="Filter by name" style="width: auto;"></li>
+								<li><input id="menu-filter-name" type="search" class="uk-input uk-form-small" placeholder="Filter by name" data-i18n-placeholder="filter.placeholder" style="width: auto;"></li>
 								<li style="height: 12px"></li>
-								<li>Status</li>
+								<li data-i18n="menu.status">Status</li>
 								<li class="uk-nav-divider"></li>
-								<li><label style="margin: 20px"> <input id="menu-filter-status-healthy" checked="1" type="checkbox" class="uk-checkbox option-boolean"> <span style="margin: 5px">Healthy</span> </label></li>
-								<li><label style="margin: 20px"> <input id="menu-filter-status-unhealthy" checked="1" type="checkbox" class="uk-checkbox option-boolean"> <span style="margin: 5px">Unhealthy</span> </label></li>
-								<li><label style="margin: 20px"> <input id="menu-filter-status-exited" checked="1" type="checkbox" class="uk-checkbox option-boolean"> <span style="margin: 5px">Exited</span> </label></li>
+								<li><label style="margin: 20px"> <input id="menu-filter-status-healthy" checked="1" type="checkbox" class="uk-checkbox option-boolean"> <span style="margin: 5px" data-i18n="menu.healthy">Healthy</span> </label></li>
+								<li><label style="margin: 20px"> <input id="menu-filter-status-unhealthy" checked="1" type="checkbox" class="uk-checkbox option-boolean"> <span style="margin: 5px" data-i18n="menu.unhealthy">Unhealthy</span> </label></li>
+								<li><label style="margin: 20px"> <input id="menu-filter-status-exited" checked="1" type="checkbox" class="uk-checkbox option-boolean"> <span style="margin: 5px" data-i18n="menu.exited">Exited</span> </label></li>
 							</ul>
 						</div>
 					</li>
 					<li>
-						<a href="#">Display</a>
+						<a href="#" data-i18n="menu.display">Display</a>
 						<div class="uk-navbar-dropdown">
 							<ul class="uk-nav uk-navbar-dropdown-nav">
-								<li><button id="action-rearrange-nodes" class="uk-button uk-button-small uk-button-default uk-width-1-1">Rearrange nodes</button></li>
+								<li><button id="action-rearrange-nodes" class="uk-button uk-button-small uk-button-default uk-width-1-1" data-i18n="menu.rearrange">Rearrange</button></li>
 								<li style="height: 12px"></li>
-								<li>Links</li>
+								<li data-i18n="menu.links">Links</li>
 								<li class="uk-nav-divider"></li>
-								<li><label style="margin: 20px"> <input id="menu-display-networks" type="checkbox" class="uk-checkbox option-boolean"> <span style="margin: 5px">Networks</span> </label></li>
-								<li><label style="margin: 20px"> <input id="menu-display-apps" checked="1" type="checkbox" class="uk-checkbox option-boolean"> <span style="margin: 5px">Application</span> </label></li>
+								<li><label style="margin: 20px"> <input id="menu-display-networks" type="checkbox" class="uk-checkbox option-boolean"> <span style="margin: 5px" data-i18n="menu.networks">Networks</span> </label></li>
+								<li><label style="margin: 20px"> <input id="menu-display-apps" checked="1" type="checkbox" class="uk-checkbox option-boolean"> <span style="margin: 5px" data-i18n="menu.application">Application</span> </label></li>
+								<li style="height: 12px"></li>
+								<li data-i18n="menu.language">Language</li>
+								<li class="uk-nav-divider"></li>
+								<li><select id="menu-language" class="uk-select uk-form-small" style="width: 100%;">
+									<option value="en">English</option>
+									<option value="fr">Français</option>
+									<option value="es">Español</option>
+								</select></li>
 							</ul>
 						</div>
 					</li>
@@ -129,7 +137,7 @@
 			<div class="uk-navbar-right">
 				<ul class="uk-navbar-nav">
 					<li>
-						<a href="#" id="theme-toggle" title="Toggle dark mode">
+						<a href="#" id="theme-toggle" title="Toggle dark mode" data-i18n-title="theme.toggle">
 							<span class="fa fa-moon-o"></span>
 						</a>
 					</li>

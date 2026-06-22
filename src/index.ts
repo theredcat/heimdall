@@ -1,6 +1,7 @@
 import { Infrastructure } from './infrastructure'
 import { DockerCompose } from './datasources/dockerCompose'
 import { Config } from './config'
+import { applyTranslations, getLanguage, setLanguage, Lang } from './i18n'
 import style from './style/graph.json'
 
 const css = require('@xterm/xterm/css/xterm.css')
@@ -89,4 +90,14 @@ document.getElementById('action-rearrange-nodes').onclick = () => {
 const nameFilter = <HTMLInputElement> document.getElementById('menu-filter-name')
 nameFilter.oninput = async () => {
 	await graph.update(true)
+}
+
+// i18n: translate the static UI and wire the language selector.
+applyTranslations(document)
+const languageSelect = <HTMLSelectElement> document.getElementById('menu-language')
+if (languageSelect) {
+	languageSelect.value = getLanguage()
+	languageSelect.onchange = () => {
+		setLanguage(<Lang> languageSelect.value)
+	}
 }
