@@ -80,22 +80,16 @@ module.exports = module.exports = (env, options) => {
 		output: {
 			filename: 'stackmanager.js',
 			path: path.resolve(__dirname, 'dist'),
+			publicPath: '/',
 		},
 	}
 	if (process.env.APP_MODE == 'dev') {
-		// Dev config
+		// Dev config: HMR is served in-process by the Node server via
+		// webpack-dev-middleware + webpack-hot-middleware (no webpack-dev-server).
 		webpackConfig['mode'] = 'development';
 		webpackConfig['devtool'] = 'inline-source-map';
-		webpackConfig['devServer'] = {
-			static: path.join(__dirname, 'dist'),
-			compress: true,
-			host: "0.0.0.0",
-			allowedHosts: "all",
-			port: 1337,
-			client: {
-				webSocketURL: `ws://${process.env.APP_DOMAIN}:${process.env.APP_PORT}/ws`
-			}
-		};
+		webpackConfig['entry'] = ['webpack-hot-middleware/client?reload=true', './src/index.ts'];
+		webpackConfig['plugins'].push(new webpack.HotModuleReplacementPlugin());
 	}
 
 	return webpackConfig;

@@ -12,6 +12,7 @@ import { Logger } from './logger'
 import { Network, NetworkModule } from './network'
 import './style/index.less'
 import { syntaxHighlight } from './utils'
+import { t } from './i18n'
 const coseBilkent = require('cytoscape-cose-bilkent')
 
 const cxtmenu = require('cytoscape-cxtmenu')
@@ -25,6 +26,9 @@ export class Infrastructure {
 	links: Map<string, Link> = new Map()
 	modules: Module[] = []
 	logger: Logger
+	// Live interactive exec sessions, kept alive across dialog open/close so the
+	// same terminal can be reattached instead of spawning a new one. Keyed by host id.
+	terminalSessions: Map<string, { term: Terminal; socket: WebSocket; fitAddon?: FitAddon; opened: boolean }> = new Map()
 
 	static optionsTypes: { [key: string]: string } = {
 		'menu-display-apps': 'boolean',
@@ -72,7 +76,7 @@ export class Infrastructure {
 
 		const commands: any[] = []
 		commands.push({
-			content: '<span class="fa fa-info"> Info</span>',
+			content: `<span class="fa fa-info"> ${t('action.info')}</span>`,
 			select: (element: NodeSingular) => {
 				const infoString = syntaxHighlight(JSON.stringify(
 					this.hosts.get(node.id().slice(5)).getInfos(),
@@ -85,7 +89,7 @@ export class Infrastructure {
 			}
 		});
 		commands.push({
-			content: '<span class="fa fa-file"> Logs</span>',
+			content: `<span class="fa fa-file"> ${t('action.logs')}</span>`,
 			select: (element: NodeSingular) => {
 				this.hosts.get(node.id().slice(5)).getLogs().then(async (logsData) => {
 					if (logsData instanceof Terminal) {
@@ -125,42 +129,42 @@ export class Infrastructure {
 
 		if (node.data().state == 'running' || node.data().state == 'unhealthy') {
 			commands.push({
-				content: '<span class="fa fa-stop"> Stop</span>',
+				content: `<span class="fa fa-stop"> ${t('action.stop')}</span>`,
 				select: (element: NodeSingular) => {
 					node.unselect()
 					const host = this.hosts.get(node.id().slice(5))
-					UIkit.notification("Stopping ...", {pos: 'top-right'})
+					UIkit.notification(t('notif.stopping'), {pos: 'top-right'})
 					host.stop().then((actionStatus) => {
 						if(actionStatus == HostActionStatus.notSupported) {
-							UIkit.modal.alert('This host provider doensn\'t support the stop action')
+							UIkit.modal.alert(t('error.stopNotSupported'))
 						} else if(actionStatus == HostActionStatus.fail) {
-							UIkit.modal.alert('Failed to stop host')
+							UIkit.modal.alert(t('error.stopFailed'))
 						} else {
-							UIkit.notification("Host stopped", {pos: 'top-right'})
+							UIkit.notification(t('notif.hostStopped'), {pos: 'top-right'})
 						}
 					})
 				}
 			})
 			commands.push({
-				content: '<span class="fa fa-redo"> Restart</span>',
+				content: `<span class="fa fa-redo"> ${t('action.restart')}</span>`,
 				select: (element: NodeSingular) => {
 					node.unselect()
 					const host = this.hosts.get(node.id().slice(5))
-					const notification = UIkit.notification('Restarting <div uk-spinner></div>', {pos: 'top-right', timeout: 0})
+					const notification = UIkit.notification(`${t('notif.restarting')} <div uk-spinner></div>`, {pos: 'top-right', timeout: 0})
 					host.stop().then((actionStatus) => {
 						if(actionStatus == HostActionStatus.notSupported) {
-							UIkit.modal.alert('This host provider doensn\'t support the restart action')
+							UIkit.modal.alert(t('error.restartNotSupported'))
 						} else if(actionStatus == HostActionStatus.fail) {
-							UIkit.modal.alert('Failed')
+							UIkit.modal.alert(t('error.failed'))
 						} else {
 							host.start().then((actionStatus) => {
 								notification.close(true)
 								if(actionStatus == HostActionStatus.notSupported) {
-									UIkit.modal.alert('This host provider doensn\'t support the start action')
+									UIkit.modal.alert(t('error.startNotSupported'))
 								} else if(actionStatus == HostActionStatus.fail) {
-									UIkit.modal.alert('Host restart failed')
+									UIkit.modal.alert(t('error.restartFailed'))
 								} else {
-									UIkit.notification(`${element.data('name')} restarted`, {pos: 'top-right'})
+									UIkit.notification(`${element.data('name')} ${t('notif.restarted')}`, {pos: 'top-right'})
 								}
 							})
 						}
@@ -168,17 +172,22 @@ export class Infrastructure {
 				}
 			})
 			commands.push({
-				content: '<span class="fa fa-terminal"> Execute</span>',
+				content: `<span class="fa fa-terminal"> ${t('action.shell')}</span>`,
 				select: (element: NodeSingular) => {
-					UIkit.modal.prompt('Command to execute :', '/bin/bash').then((command) => {
-						if(command.length > 0) {
-							UIkit.modal.dialog('<div class="uk-padding"><span class="uk-text-lead">Running <div uk-spinner></div></span></div>')
-							this.hosts.get(node.id().slice(5)).executeCommand(command).then((execData) => {
-								if (execData instanceof Terminal) {
-									this.showTerminalInDialog(execData)
-								} else {
-									UIkit.modal.alert('This host provider doensn\'t support the execute action')
-								}
+					const hostId = node.id().slice(5)
+					// Reattach to a still-running session instead of spawning a new shell.
+					const existing = this.terminalSessions.get(hostId)
+					if (existing && existing.socket.readyState === WebSocket.OPEN) {
+						this.openTerminalDialog(hostId)
+						return
+					}
+					UIkit.modal.prompt(t('prompt.shellCommand'), '/bin/sh').then((command) => {
+						if (command && command.length > 0) {
+							this.hosts.get(hostId).getExecTerminal(command).then(({ term, socket }) => {
+								this.terminalSessions.set(hostId, { term, socket, opened: false })
+								// Clear the session (and the node badge) once the shell really ends.
+								socket.addEventListener('close', () => this.terminalSessions.delete(hostId))
+								this.openTerminalDialog(hostId)
 							})
 						}
 					})
@@ -187,17 +196,17 @@ export class Infrastructure {
 		}
 		if (node.data().state == 'stopped' || node.data().state == 'suspended') {
 			commands.push({
-				content: '<span class="fa fa-play"> Start</span>',
+				content: `<span class="fa fa-play"> ${t('action.start')}</span>`,
 				select: (element: NodeSingular) => {
 					node.unselect()
 					const host = this.hosts.get(node.id().slice(5))
 					host.start().then((actionStatus) => {
 						if(actionStatus == HostActionStatus.notSupported) {
-							UIkit.modal.alert('This host provider doensn\'t support the start action')
+							UIkit.modal.alert(t('error.startNotSupported'))
 						} else if(actionStatus == HostActionStatus.fail) {
-							UIkit.modal.alert('Failed')
+							UIkit.modal.alert(t('error.failed'))
 						} else {
-							UIkit.notification('Host started', {pos: 'top-right'})
+							UIkit.notification(t('notif.hostStarted'), {pos: 'top-right'})
 						}
 					})
 				}
@@ -205,17 +214,17 @@ export class Infrastructure {
 		}
 		if (node.data().state == 'stopped') {
 			commands.push({
-				content: '<span class="fa fa-trash"> Delete</span>',
+				content: `<span class="fa fa-trash"> ${t('action.delete')}</span>`,
 				select: (element: NodeSingular) => {
 					node.unselect()
 					const host = this.hosts.get(node.id().slice(5))
 					host.delete().then((actionStatus) => {
 						if(actionStatus == HostActionStatus.notSupported) {
-							UIkit.modal.alert('Not implemented')
+							UIkit.modal.alert(t('error.notImplemented'))
 						} else if(actionStatus == HostActionStatus.fail) {
-							UIkit.modal.alert('Failed')
+							UIkit.modal.alert(t('error.failed'))
 						} else {
-							UIkit.modal.alert('Host deleted')
+							UIkit.modal.alert(t('notif.hostDeleted'))
 						}
 					})
 				}
@@ -232,7 +241,7 @@ export class Infrastructure {
 		}
 
 		return [{
-			content: '<span class="fa fa-info"> Link reason</span>',
+			content: `<span class="fa fa-info"> ${t('action.linkReason')}</span>`,
 			select: (element: NodeSingular) => {
 				const reasons: any[] = element.data('reasons') || []
 				const sourceName = element.data('sourceName')
@@ -240,20 +249,20 @@ export class Infrastructure {
 
 				let body: string
 				if (reasons.length == 0) {
-					body = '<p class="uk-text-muted">No detailed reason available for this link.</p>'
+					body = `<p class="uk-text-muted">${t('link.noReason')}</p>`
 				} else {
 					let cards = ''
 					for (const reason of reasons) {
 						const details: string[] = []
 						if (reason.envKey) {
 							const value = reason.envValue ? `<code class="uk-text-break"> = ${reason.envValue}</code>` : ''
-							details.push(`<dt><span uk-icon="icon: cog; ratio: 0.8"></span> Environment variable</dt><dd><span class="uk-label">${reason.envKey}</span>${value}</dd>`)
+							details.push(`<dt><span uk-icon="icon: cog; ratio: 0.8"></span> ${t('link.envVar')}</dt><dd><span class="uk-label">${reason.envKey}</span>${value}</dd>`)
 						}
 						if (reason.alias) {
-							details.push(`<dt><span uk-icon="icon: tag; ratio: 0.8"></span> Matched DNS alias</dt><dd><span class="uk-label uk-label-success">${reason.alias}</span></dd>`)
+							details.push(`<dt><span uk-icon="icon: tag; ratio: 0.8"></span> ${t('link.dnsAlias')}</dt><dd><span class="uk-label uk-label-success">${reason.alias}</span></dd>`)
 						}
 						if (reason.network) {
-							details.push(`<dt><span uk-icon="icon: cloud-download; ratio: 0.8"></span> Through network</dt><dd><span class="uk-label uk-label-warning">${reason.network}</span></dd>`)
+							details.push(`<dt><span uk-icon="icon: cloud-download; ratio: 0.8"></span> ${t('link.network')}</dt><dd><span class="uk-label uk-label-warning">${reason.network}</span></dd>`)
 						}
 						cards += `
 							<div class="uk-card uk-card-default uk-card-small uk-card-body uk-margin-small-bottom">
@@ -278,7 +287,7 @@ export class Infrastructure {
 								${body}
 							</div>
 							<div class="uk-modal-footer uk-text-right">
-								<button class="uk-button uk-button-primary uk-modal-close" type="button">Close</button>
+								<button class="uk-button uk-button-primary uk-modal-close" type="button">${t('common.close')}</button>
 							</div>
 						</div>
 					</div>`
@@ -316,6 +325,37 @@ export class Infrastructure {
 		UIkitUtil.on(dialog.content, 'closed', () => {
 			term.dispose()
 		})
+	}
+
+	// Show (or re-show) a persistent interactive exec session. Closing the dialog
+	// does NOT dispose the terminal or close the socket: the session keeps running
+	// and is reattached on the next open (its scrollback is preserved). The session
+	// only ends when the shell exits (socket close) or the tab is closed.
+	private openTerminalDialog(hostId: string) {
+		const session = this.terminalSessions.get(hostId)
+		if (!session) {
+			return
+		}
+		const dialog = this.getWideDialog('<div class="terminal"></div>')
+		if (!session.fitAddon) {
+			session.fitAddon = new FitAddon()
+			session.term.loadAddon(session.fitAddon)
+		}
+		const fitAddon = session.fitAddon
+		new ResizeObserver(() => { try { fitAddon.fit() } catch (e) { /* not attached */ } }).observe(dialog.content)
+		UIkitUtil.on(dialog.content, 'shown', () => {
+			const terminalDiv = dialog.content.getElementsByClassName('terminal')[0] as HTMLElement
+			if (!session.opened) {
+				session.term.open(terminalDiv)
+				session.opened = true
+			} else if (session.term.element) {
+				// Move the already-rendered terminal (with its buffer) into the new dialog.
+				terminalDiv.appendChild(session.term.element)
+			}
+			fitAddon.fit()
+			session.term.focus()
+		})
+		dialog.dialog.show()
 	}
 
 	public getOption(option: string, optionType: string): any {
@@ -425,10 +465,14 @@ export class Infrastructure {
 				return
 			}
 			visibleHostIds.add("host-" + host.id)
+			const hasTerminal = this.terminalSessions.has(host.id)
 			nodesDefinitions.push({
 				data: {
 					id: "host-" + host.id,
 					name: host.name,
+					// "#!" shebang marker shown inside the node while a shell is open.
+					label: (hasTerminal ? '#! ' : '') + host.name,
+					hasTerminal: hasTerminal,
 					state: host.state,
 					type: "host"
 				}

@@ -1,4 +1,7 @@
 #!/bin/bash
+# Dev entrypoint (runs as root): remap the `app` user to the caller's uid/gid so
+# bind-mounted files stay owned by the host user, grant access to the mounted
+# docker socket, then drop privileges to `app`.
 USER_NAME=app
 USER_UID=$(id -u app)
 USER_GID=$(id -g app)
@@ -9,6 +12,17 @@ fi
 
 if ! [ -z "$GID" ] && [ "$GID" != "$USER_GID" ] && ! id "$GID"; then
     gosu root groupmod -g "$GID" "$USER_NAME"
+fi
+
+# Give `app` access to the docker socket (owned by an arbitrary host gid).
+SOCK="${DOCKER_SOCKET:-/var/run/docker.sock}"
+if [ -S "$SOCK" ]; then
+    SOCK_GID=$(stat -c '%g' "$SOCK")
+    if ! getent group "$SOCK_GID" >/dev/null; then
+        groupadd -g "$SOCK_GID" dockersock || true
+    fi
+    SOCK_GROUP=$(getent group "$SOCK_GID" | cut -d: -f1)
+    usermod -aG "$SOCK_GROUP" "$USER_NAME" || true
 fi
 
 gosu $UID "$@"

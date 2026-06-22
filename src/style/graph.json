@@ -15,7 +15,7 @@
 	{
 		"selector": "node[type=\"host\"]",
 		"css": {
-			"content": "data(name)",
+			"content": "data(label)",
 			"shape": "hexagon",
 			"width": "51",
 			"height": "44",
